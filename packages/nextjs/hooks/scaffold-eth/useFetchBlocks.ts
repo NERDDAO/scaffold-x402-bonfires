@@ -1,69 +1,133 @@
-import { useEffect, useState } from "react";
-import { Block, TransactionReceipt } from "viem";
-import { usePublicClient } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Block,
+  Hash,
+  Transaction,
+  TransactionReceipt,
+  createTestClient,
+  publicActions,
+  walletActions,
+  webSocket,
+} from "viem";
+import { hardhat } from "viem/chains";
+import { decodeTransactionData } from "~~/utils/scaffold-eth";
 
-/**
- * Custom hook to fetch blocks from the blockchain
- */
+const BLOCKS_PER_PAGE = 20;
+
+export const testClient = createTestClient({
+  chain: hardhat,
+  mode: "hardhat",
+  transport: webSocket("ws://127.0.0.1:8545"),
+})
+  .extend(publicActions)
+  .extend(walletActions);
+
 export const useFetchBlocks = () => {
-  const publicClient = usePublicClient();
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [transactionReceipts, setTransactionReceipts] = useState<{ [key: string]: TransactionReceipt }>({});
+  const [transactionReceipts, setTransactionReceipts] = useState<{
+    [key: string]: TransactionReceipt;
+  }>({});
   const [currentPage, setCurrentPage] = useState(0);
   const [totalBlocks, setTotalBlocks] = useState(0n);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const fetchBlocks = async () => {
-      if (!publicClient) return;
+  const fetchBlocks = useCallback(async () => {
+    setError(null);
 
-      try {
-        setIsLoading(true);
-        const blockNumber = await publicClient.getBlockNumber();
-        setTotalBlocks(blockNumber);
+    try {
+      const blockNumber = await testClient.getBlockNumber();
+      setTotalBlocks(blockNumber);
 
-        // Fetch last 10 blocks
-        const blockPromises = [];
-        for (let i = 0; i < 10; i++) {
-          const num = blockNumber - BigInt(i);
-          if (num >= 0n) {
-            blockPromises.push(publicClient.getBlock({ blockNumber: num, includeTransactions: true }));
-          }
+      const startingBlock = blockNumber - BigInt(currentPage * BLOCKS_PER_PAGE);
+      const blockNumbersToFetch = Array.from(
+        { length: Number(BLOCKS_PER_PAGE < startingBlock + 1n ? BLOCKS_PER_PAGE : startingBlock + 1n) },
+        (_, i) => startingBlock - BigInt(i),
+      );
+
+      const blocksWithTransactions = blockNumbersToFetch.map(async blockNumber => {
+        try {
+          return testClient.getBlock({ blockNumber, includeTransactions: true });
+        } catch (err) {
+          setError(err instanceof Error ? err : new Error("An error occurred."));
+          throw err;
         }
+      });
+      const fetchedBlocks = await Promise.all(blocksWithTransactions);
 
-        const fetchedBlocks = await Promise.all(blockPromises);
-        setBlocks(fetchedBlocks);
+      fetchedBlocks.forEach(block => {
+        block.transactions.forEach(tx => decodeTransactionData(tx as Transaction));
+      });
 
-        // Fetch transaction receipts
-        const receipts: { [key: string]: TransactionReceipt } = {};
-        for (const block of fetchedBlocks) {
-          if (block.transactions && Array.isArray(block.transactions)) {
-            for (const tx of block.transactions) {
-              const txHash = typeof tx === "string" ? tx : tx.hash;
-              if (txHash) {
-                try {
-                  const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
-                  receipts[txHash] = receipt;
-                } catch (err) {
-                  console.error(`Failed to fetch receipt for ${txHash}:`, err);
-                }
-              }
+      const txReceipts = await Promise.all(
+        fetchedBlocks.flatMap(block =>
+          block.transactions.map(async tx => {
+            try {
+              const receipt = await testClient.getTransactionReceipt({ hash: (tx as Transaction).hash });
+              return { [(tx as Transaction).hash]: receipt };
+            } catch (err) {
+              setError(err instanceof Error ? err : new Error("An error occurred."));
+              throw err;
             }
+          }),
+        ),
+      );
+
+      setBlocks(fetchedBlocks);
+      setTransactionReceipts(prevReceipts => ({ ...prevReceipts, ...Object.assign({}, ...txReceipts) }));
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("An error occurred."));
+    }
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchBlocks();
+  }, [fetchBlocks]);
+
+  useEffect(() => {
+    const handleNewBlock = async (newBlock: any) => {
+      try {
+        if (currentPage === 0) {
+          if (newBlock.transactions.length > 0) {
+            const transactionsDetails = await Promise.all(
+              newBlock.transactions.map((txHash: string) => testClient.getTransaction({ hash: txHash as Hash })),
+            );
+            newBlock.transactions = transactionsDetails;
           }
+
+          newBlock.transactions.forEach((tx: Transaction) => decodeTransactionData(tx as Transaction));
+
+          const receipts = await Promise.all(
+            newBlock.transactions.map(async (tx: Transaction) => {
+              try {
+                const receipt = await testClient.getTransactionReceipt({ hash: (tx as Transaction).hash });
+                return { [(tx as Transaction).hash]: receipt };
+              } catch (err) {
+                setError(err instanceof Error ? err : new Error("An error occurred fetching receipt."));
+                throw err;
+              }
+            }),
+          );
+
+          setBlocks(prevBlocks => [newBlock, ...prevBlocks.slice(0, BLOCKS_PER_PAGE - 1)]);
+          setTransactionReceipts(prevReceipts => ({ ...prevReceipts, ...Object.assign({}, ...receipts) }));
         }
-        setTransactionReceipts(receipts);
-        setError(null);
+        if (newBlock.number) {
+          setTotalBlocks(newBlock.number);
+        }
       } catch (err) {
-        console.error("Error fetching blocks:", err);
-        setError(err as Error);
-      } finally {
-        setIsLoading(false);
+        setError(err instanceof Error ? err : new Error("An error occurred."));
       }
     };
 
-    fetchBlocks();
-  }, [publicClient, currentPage]);
+    return testClient.watchBlocks({ onBlock: handleNewBlock, includeTransactions: true });
+  }, [currentPage]);
 
-  return { blocks, transactionReceipts, currentPage, totalBlocks, setCurrentPage, isLoading, error };
+  return {
+    blocks,
+    transactionReceipts,
+    currentPage,
+    totalBlocks,
+    setCurrentPage,
+    error,
+  };
 };

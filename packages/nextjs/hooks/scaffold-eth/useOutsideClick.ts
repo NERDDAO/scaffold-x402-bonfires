@@ -1,27 +1,23 @@
-import { RefObject, useEffect } from "react";
+import React, { useEffect } from "react";
 
 /**
- * Hook for detecting clicks outside a specified element
+ * Handles clicks outside of passed ref element
+ * @param ref - react ref of the element
+ * @param callback - callback function to call when clicked outside
  */
-export const useOutsideClick = (ref: RefObject<HTMLElement | null>, callback: () => void) => {
+export const useOutsideClick = (ref: React.RefObject<HTMLElement | null>, callback: { (): void }) => {
   useEffect(() => {
-    const listener = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node;
-
-      // Do nothing if clicking ref's element or descendent elements
-      if (!ref.current || ref.current.contains(target)) {
+    function handleOutsideClick(event: MouseEvent) {
+      if (!(event.target instanceof Element)) {
         return;
       }
 
-      callback();
-    };
+      if (ref.current && !ref.current.contains(event.target)) {
+        callback();
+      }
+    }
 
-    document.addEventListener("mousedown", listener);
-    document.addEventListener("touchstart", listener);
-
-    return () => {
-      document.removeEventListener("mousedown", listener);
-      document.removeEventListener("touchstart", listener);
-    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
   }, [ref, callback]);
 };

@@ -1,43 +1,40 @@
 import { useEffect, useState } from "react";
-import { Address } from "viem";
+import { useTargetNetwork } from "./useTargetNetwork";
+import { Address, Log } from "viem";
 import { usePublicClient } from "wagmi";
 
-/**
- * Custom hook to fetch contract logs
- */
 export const useContractLogs = (address: Address) => {
-  const publicClient = usePublicClient();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [logs, setLogs] = useState<Log[]>([]);
+  const { targetNetwork } = useTargetNetwork();
+  const client = usePublicClient({ chainId: targetNetwork.id });
 
   useEffect(() => {
     const fetchLogs = async () => {
-      if (!publicClient || !address) return;
-
+      if (!client) return console.error("Client not found");
       try {
-        setIsLoading(true);
-        const blockNumber = await publicClient.getBlockNumber();
-        const fromBlock = blockNumber > 1000n ? blockNumber - 1000n : 0n;
-
-        const contractLogs = await publicClient.getLogs({
-          address,
-          fromBlock,
-          toBlock: blockNumber,
+        const existingLogs = await client.getLogs({
+          address: address,
+          fromBlock: 0n,
+          toBlock: "latest",
         });
-
-        setLogs(contractLogs);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching logs:", err);
-        setError(err as Error);
-      } finally {
-        setIsLoading(false);
+        setLogs(existingLogs);
+      } catch (error) {
+        console.error("Failed to fetch logs:", error);
       }
     };
-
     fetchLogs();
-  }, [publicClient, address]);
 
-  return { data: logs, logs, isLoading, error };
+    return client?.watchBlockNumber({
+      onBlockNumber: async (_blockNumber, prevBlockNumber) => {
+        const newLogs = await client.getLogs({
+          address: address,
+          fromBlock: prevBlockNumber,
+          toBlock: "latest",
+        });
+        setLogs(prevLogs => [...prevLogs, ...newLogs]);
+      },
+    });
+  }, [address, client]);
+
+  return logs;
 };
