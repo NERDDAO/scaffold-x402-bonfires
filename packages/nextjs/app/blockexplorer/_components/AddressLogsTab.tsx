@@ -3,7 +3,7 @@ import { useContractLogs } from "~~/hooks/scaffold-eth";
 import { replacer } from "~~/utils/scaffold-eth/common";
 
 export const AddressLogsTab = ({ address }: { address: Address }) => {
-  const { logs: contractLogs } = useContractLogs(address);
+  const contractLogs = useContractLogs(address);
 
   return (
     <div className="flex flex-col gap-3 p-4">
