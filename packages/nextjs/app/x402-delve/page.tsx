@@ -12,12 +12,9 @@ export default function DelvePage() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Knowledge Graph Search</h1>
-        <p className="text-base-content/70">
-          Search the knowledge graph with blockchain-powered payments.
-        </p>
+        <p className="text-base-content/70">Search the knowledge graph with blockchain-powered payments.</p>
       </div>
       <PaidDelveInterface agentId={agentId} />
     </div>
   );
 }
-

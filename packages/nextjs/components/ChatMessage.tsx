@@ -9,7 +9,6 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, className = "" }: ChatMessageProps) {
   const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
 
   return (
     <div className={`chat ${isUser ? "chat-end" : "chat-start"} ${className}`}>
@@ -20,13 +19,8 @@ export function ChatMessage({ message, className = "" }: ChatMessageProps) {
           </div>
         </div>
       </div>
-      <div className="chat-header mb-1">
-        {isUser ? "You" : "Assistant"}
-      </div>
-      <div className={`chat-bubble ${isUser ? "chat-bubble-primary" : "chat-bubble-secondary"}`}>
-        {message.content}
-      </div>
+      <div className="chat-header mb-1">{isUser ? "You" : "Assistant"}</div>
+      <div className={`chat-bubble ${isUser ? "chat-bubble-primary" : "chat-bubble-secondary"}`}>{message.content}</div>
     </div>
   );
 }
-

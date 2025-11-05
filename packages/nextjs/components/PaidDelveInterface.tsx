@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
+import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import type { DelveResponseWithPayment } from "@/lib/types/delve-api";
 import { formatErrorMessage } from "@/lib/utils";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 interface PaidDelveInterfaceProps {
   agentId: string;
@@ -151,7 +151,7 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
             <div>
               <h3 className="font-bold mb-2">Entities ({results.entities?.length || 0})</h3>
-              {results.entities?.map((entity, idx) => (
+              {results.entities?.map((entity: any, idx: number) => (
                 <div key={idx} className="card bg-base-200 shadow-sm mb-2">
                   <div className="card-body p-4">
                     <div className="badge badge-primary">Entity</div>
@@ -163,7 +163,7 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
             </div>
             <div>
               <h3 className="font-bold mb-2">Episodes ({results.episodes?.length || 0})</h3>
-              {results.episodes?.map((episode, idx) => (
+              {results.episodes?.map((episode: any, idx: number) => (
                 <div key={idx} className="card bg-base-200 shadow-sm mb-2">
                   <div className="card-body p-4">
                     <div className="badge badge-secondary">Episode</div>
@@ -178,4 +178,3 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
     </div>
   );
 }
-

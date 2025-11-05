@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
-import { config } from '../lib/config';
-import { buildPaymentTypedData, encodePaymentHeader } from '../lib/payment/build-payment-header';
-import type { X402PaymentHeader } from '../lib/types/x402';
+import { useCallback, useState } from "react";
+import { config } from "../lib/config";
+import { buildPaymentTypedData, encodePaymentHeader } from "../lib/payment/build-payment-header";
+import type { X402PaymentHeader } from "../lib/types/x402";
+import { useAccount, useSignTypedData } from "wagmi";
 
 export interface UsePaymentHeaderReturn {
   buildAndSignPaymentHeader: (amount?: string) => Promise<X402PaymentHeader>;
@@ -26,7 +26,7 @@ export function usePaymentHeader(): UsePaymentHeaderReturn {
         setIsProcessing(true);
 
         if (!isConnected || !address) {
-          throw new Error('Wallet not connected. Please connect your wallet to continue.');
+          throw new Error("Wallet not connected. Please connect your wallet to continue.");
         }
 
         const paymentAmount = amount || config.payment.amount;
@@ -40,22 +40,22 @@ export function usePaymentHeader(): UsePaymentHeaderReturn {
         });
 
         const signature = await signTypedDataAsync({
-          domain: typedData.domain,
-          types: typedData.types,
+          domain: typedData.domain as any,
+          types: typedData.types as any,
           primaryType: typedData.primaryType,
-          message: typedData.message,
+          message: typedData.message as any,
         });
 
         return encodePaymentHeader(typedData.message, signature, config.payment.network);
       } catch (err) {
-        const error = new Error(err instanceof Error ? err.message : 'Failed to build payment header');
+        const error = new Error(err instanceof Error ? err.message : "Failed to build payment header");
         setError(error);
         throw error;
       } finally {
         setIsProcessing(false);
       }
     },
-    [address, isConnected, signTypedDataAsync]
+    [address, isConnected, signTypedDataAsync],
   );
 
   const reset = useCallback(() => setError(null), []);

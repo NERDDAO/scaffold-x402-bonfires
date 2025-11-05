@@ -5,6 +5,7 @@ A Scaffold-ETH 2 application demonstrating blockchain-powered payment-gated AI i
 ## Overview
 
 This application integrates Scaffold-ETH 2 with Delve's AI agent backend, enabling users to:
+
 - Chat with AI agents using blockchain payments
 - Search knowledge graphs with paid queries
 - Benefit from microsub payments (pay once, query multiple times)
@@ -121,6 +122,7 @@ When you initiate an action, you'll be prompted to sign an EIP-712 typed message
 ### 4. View Payment Status
 
 The UI displays:
+
 - Payment verification status
 - Settlement status
 - Microsub information (queries remaining, expiration)
@@ -165,6 +167,7 @@ packages/nextjs/
 Payment-gated chat with AI agent.
 
 **Request:**
+
 ```json
 {
   "message": "Hello!",
@@ -175,6 +178,7 @@ Payment-gated chat with AI agent.
 ```
 
 **Response:**
+
 ```json
 {
   "response": "Hello! How can I help?",
@@ -193,6 +197,7 @@ Payment-gated chat with AI agent.
 Payment-gated knowledge graph search.
 
 **Request:**
+
 ```json
 {
   "query": "artificial intelligence",
@@ -202,6 +207,7 @@ Payment-gated knowledge graph search.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -241,6 +247,7 @@ Make sure you've clicked the ConnectButton and approved the connection.
 ### "Payment verification failed" Error
 
 Check that:
+
 - Token address matches between frontend and Delve backend
 - Recipient address matches
 - Network name matches
@@ -293,4 +300,3 @@ Verify that Delve backend has microsub enabled and configured properly. Check ba
 ## License
 
 MIT
-

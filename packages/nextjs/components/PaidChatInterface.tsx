@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { usePaymentHeader } from "@/hooks/usePaymentHeader";
+import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
+import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import type { ChatMessage as ChatMessageType, ChatResponseWithPayment, GraphMode } from "@/lib/types/delve-api";
 import { formatErrorMessage } from "@/lib/utils";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 interface PaidChatInterfaceProps {
   agentId: string;
@@ -102,9 +102,7 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
 
         <div className="bg-base-200 rounded-lg p-4 h-96 overflow-y-auto mb-4">
           {messages.length === 0 && (
-            <div className="text-center text-base-content/50 mt-20">
-              Start a conversation...
-            </div>
+            <div className="text-center text-base-content/50 mt-20">Start a conversation...</div>
           )}
           {messages.map((msg, idx) => (
             <ChatMessage key={idx} message={msg} className="mb-4" />
@@ -149,4 +147,3 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
     </div>
   );
 }
-

@@ -36,18 +36,9 @@ export function PaymentStatusBadge({ payment, className = "" }: PaymentStatusBad
         </div>
       )}
 
-      {payment.from_address && (
-        <div className="text-xs opacity-70">
-          From: {truncateAddress(payment.from_address)}
-        </div>
-      )}
+      {payment.from_address && <div className="text-xs opacity-70">From: {truncateAddress(payment.from_address)}</div>}
 
-      {payment.tx_hash && (
-        <div className="text-xs opacity-70">
-          TX: {truncateAddress(payment.tx_hash)}
-        </div>
-      )}
+      {payment.tx_hash && <div className="text-xs opacity-70">TX: {truncateAddress(payment.tx_hash)}</div>}
     </div>
   );
 }
-

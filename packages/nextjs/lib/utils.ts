@@ -1,7 +1,6 @@
 /**
  * Utility functions for the x402 payment-gated application
  */
-
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -27,16 +26,16 @@ export function truncateAddress(address: string, chars: number = 4): string {
 export function formatTimestamp(isoString: string): string {
   try {
     const date = new Date(isoString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     }).format(date);
   } catch (error) {
-    console.error('Error formatting timestamp:', error);
+    console.error("Error formatting timestamp:", error);
     return isoString;
   }
 }
@@ -45,28 +44,28 @@ export function formatTimestamp(isoString: string): string {
  * Extract user-friendly error message from various error types
  */
 export function formatErrorMessage(error: unknown): string {
-  if (typeof error === 'string') {
+  if (typeof error === "string") {
     return error;
   }
 
   if (error instanceof Error) {
-    if (error.message.includes('User rejected')) {
-      return 'Transaction was rejected by user';
+    if (error.message.includes("User rejected")) {
+      return "Transaction was rejected by user";
     }
-    if (error.message.includes('insufficient funds')) {
-      return 'Insufficient funds to complete transaction';
+    if (error.message.includes("insufficient funds")) {
+      return "Insufficient funds to complete transaction";
     }
-    if (error.message.includes('network')) {
-      return 'Network error. Please check your connection and try again.';
+    if (error.message.includes("network")) {
+      return "Network error. Please check your connection and try again.";
     }
     return error.message;
   }
 
-  if (error && typeof error === 'object' && 'message' in error) {
+  if (error && typeof error === "object" && "message" in error) {
     return String((error as any).message);
   }
 
-  return 'An unexpected error occurred. Please try again.';
+  return "An unexpected error occurred. Please try again.";
 }
 
 /**
@@ -79,18 +78,14 @@ export function isValidAddress(address: string): boolean {
 /**
  * Format token amount with decimals for display
  */
-export function formatTokenAmount(
-  amount: string | number,
-  decimals: number = 6,
-  displayDecimals: number = 2
-): string {
+export function formatTokenAmount(amount: string | number, decimals: number = 6, displayDecimals: number = 2): string {
   try {
-    const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const amountNum = typeof amount === "string" ? parseFloat(amount) : amount;
     const divisor = Math.pow(10, decimals);
     const value = amountNum / divisor;
     return value.toFixed(displayDecimals);
   } catch (error) {
-    console.error('Error formatting token amount:', error);
+    console.error("Error formatting token amount:", error);
     return String(amount);
   }
 }
@@ -100,5 +95,5 @@ export function formatTokenAmount(
  */
 export function truncateText(text: string, maxLength: number = 50): string {
   if (!text || text.length <= maxLength) return text;
-  return text.slice(0, maxLength) + '...';
+  return text.slice(0, maxLength) + "...";
 }
