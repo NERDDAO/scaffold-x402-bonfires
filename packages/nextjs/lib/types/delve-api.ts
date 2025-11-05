@@ -3,6 +3,48 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface BonfireInfo {
+  id: string;
+  name: string;
+  taxonomy_labels?: string[];
+  groups?: { label: string; group_id: string }[];
+  latest_taxonomies?: {
+    _id: string;
+    name: string;
+    description?: string;
+    category?: string;
+  }[];
+}
+
+export interface AgentInfo {
+  id: string;
+  agent_config_id?: string;
+  username: string;
+  name: string;
+  is_active: boolean;
+  bonfire_id: string;
+}
+
+export interface BonfireListResponse {
+  bonfires: BonfireInfo[];
+}
+
+export interface BonfireAgentsResponse {
+  bonfire_id: string;
+  agents: AgentInfo[];
+  total_agents: number;
+  active_agents: number;
+}
+
+export interface AgentSelectionState {
+  selectedBonfire: BonfireInfo | null;
+  selectedAgent: AgentInfo | null;
+  availableBonfires: BonfireInfo[];
+  availableAgents: AgentInfo[];
+  loading: { bonfires: boolean; agents: boolean };
+  error: { bonfires?: string | null; agents?: string | null } | null;
+}
+
 export type GraphMode = "adaptive" | "static" | "dynamic" | "none";
 
 export interface LangGraphChatRequest {
@@ -16,10 +58,15 @@ export interface LangGraphChatRequest {
 }
 
 export interface LangGraphChatResponse {
-  response: string;
+  reply: string;
+  graph_action: string;
+  search_prompt?: string;
+  graph_data?: any;
+  graph_operation?: any;
+  new_graph_id?: string;
   graph_id?: string;
   center_node_uuid?: string;
-  agent_id: string;
+  agent_id?: string;
 }
 
 export interface DelveRequest {

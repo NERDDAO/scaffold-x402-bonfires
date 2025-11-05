@@ -66,7 +66,7 @@ Successfully created a complete Scaffold-ETH 2 application with x402 payment-gat
 4. User signs typed data (wagmi useSignTypedData)
 5. Client base64-encodes payment header
 6. Next.js API route receives request with payment_header
-7. API route forwards to Delve backend (/paid/agents/{id}/chat or /paid/delve)
+7. API route forwards to Delve backend (/paid/agents/{id}/chat or /paid/agents/{id}/delve)
 8. Delve backend verifies payment via OnchainFi REST API
 9. Delve backend settles payment via OnchainFi REST API
 10. Delve backend creates/updates microsub

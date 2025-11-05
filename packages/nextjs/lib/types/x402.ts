@@ -61,6 +61,7 @@ export const DEFAULT_VALID_DURATION_SECONDS = 3600;
 export interface BuildPaymentHeaderParams {
   tokenAddress: string;
   recipientAddress: string;
+  /** Amount in decimal format (e.g., "0.01" for 0.01 USDC) - will be converted to smallest unit internally */
   amount: string;
   network: string;
   chainId: number;

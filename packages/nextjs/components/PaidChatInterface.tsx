@@ -59,7 +59,7 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
       }
 
       const data: ChatResponseWithPayment = await response.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
+      setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       setPayment(data.payment);
     } catch (err) {
       setError(formatErrorMessage(err));

@@ -1,6 +1,6 @@
 /**
  * Payment-gated delve search API route
- * Forwards requests to delve's /paid/delve endpoint
+ * Forwards requests to delve's /paid/agents/{agent_id}/delve endpoint
  *
  * Delve backend handles all payment verification, settlement, and microsub management.
  * This route acts as a simple proxy.
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     };
 
     // Forward to delve backend
-    const delveUrl = `${config.delve.apiUrl}/paid/delve`;
+    const delveUrl = `${config.delve.apiUrl}/paid/agents/${agent_id}/delve`;
 
     console.log(`Forwarding delve search request to: ${delveUrl}`);
 
