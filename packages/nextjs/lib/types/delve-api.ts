@@ -124,6 +124,7 @@ export interface PaymentMetadata {
 
 export interface PaidAgentChatRequest extends LangGraphChatRequest {
   payment_header?: string;
+  tx_hash?: string;
   expected_amount?: string;
   query_limit?: number;
   expiration_days?: number;
@@ -131,6 +132,7 @@ export interface PaidAgentChatRequest extends LangGraphChatRequest {
 
 export interface PaidDelveRequest extends DelveRequest {
   payment_header?: string;
+  tx_hash?: string;
   expected_amount?: string;
   query_limit?: number;
   expiration_days?: number;
@@ -153,4 +155,25 @@ export interface DelveResponseWithPayment extends DelveResponse {
 
 export interface EpisodeUpdateResponseWithPayment extends KnowledgeGraphEpisodeUpdateResponse {
   payment: PaymentMetadata;
+}
+
+export interface MicrosubInfo {
+  tx_hash: string;
+  agent_id: string;
+  query_limit: number;
+  queries_remaining: number;
+  expires_at: string;
+  created_at: string;
+  is_expired: boolean;
+  is_exhausted: boolean;
+  // Optional fields - may not be present in backend response
+  queries_used?: number;
+  created_by_address?: string;
+  is_valid?: boolean;
+}
+
+export interface MicrosubListResponse {
+  microsubs: MicrosubInfo[];
+  total_count: number;
+  active_count: number;
 }

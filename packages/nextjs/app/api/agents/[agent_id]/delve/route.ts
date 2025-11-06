@@ -15,10 +15,10 @@ import { createErrorFromResponse } from "@/lib/types/errors";
  *
  * Forwards payment-gated delve search requests to delve backend
  */
-export async function POST(request: NextRequest, { params }: { params: Promise<{ agent_id: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: { agent_id: string } }) {
   try {
     // Extract agent_id from route params
-    const { agent_id } = await params;
+    const { agent_id } = params;
 
     if (!agent_id || typeof agent_id !== "string") {
       return NextResponse.json({ error: "Invalid agent_id parameter" }, { status: 400 });

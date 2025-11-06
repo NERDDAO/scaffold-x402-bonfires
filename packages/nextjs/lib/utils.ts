@@ -45,10 +45,30 @@ export function formatTimestamp(isoString: string): string {
  */
 export function formatErrorMessage(error: unknown): string {
   if (typeof error === "string") {
+    // Check for microsub-specific errors
+    if (error.includes("409") || error.includes("Conflict")) {
+      return "Subscription exhausted. Retrying with new payment...";
+    }
+    if (error.includes("expired")) {
+      return "Subscription has expired. Please use a new payment.";
+    }
+    if (error.includes("exhausted")) {
+      return "Subscription has no queries remaining. Please use a new payment.";
+    }
     return error;
   }
 
   if (error instanceof Error) {
+    // Check for microsub-specific errors
+    if (error.message.includes("409") || error.message.includes("Conflict")) {
+      return "Subscription exhausted. Retrying with new payment...";
+    }
+    if (error.message.includes("expired")) {
+      return "Subscription has expired. Please use a new payment.";
+    }
+    if (error.message.includes("exhausted")) {
+      return "Subscription has no queries remaining. Please use a new payment.";
+    }
     if (error.message.includes("User rejected")) {
       return "Transaction was rejected by user";
     }
@@ -66,6 +86,57 @@ export function formatErrorMessage(error: unknown): string {
   }
 
   return "An unexpected error occurred. Please try again.";
+}
+
+/**
+ * Detect if an error is related to microsub validity issues
+ * @param error - The error to check
+ * @returns Object indicating if it's a microsub error and the error type
+ */
+export function isMicrosubError(error: unknown): {
+  isMicrosubError: boolean;
+  errorType?: "expired" | "exhausted" | "invalid";
+} {
+  let message = "";
+
+  if (typeof error === "string") {
+    message = error.toLowerCase();
+  } else if (error instanceof Error) {
+    message = error.message.toLowerCase();
+  } else if (error && typeof error === "object" && "message" in error) {
+    message = String((error as any).message).toLowerCase();
+  }
+
+  if (!message) {
+    return { isMicrosubError: false };
+  }
+
+  // Check for expired subscription
+  if (message.includes("expired") || message.includes("expiration")) {
+    return { isMicrosubError: true, errorType: "expired" };
+  }
+
+  // Check for exhausted subscription
+  if (message.includes("exhausted") || message.includes("no queries remaining")) {
+    return { isMicrosubError: true, errorType: "exhausted" };
+  }
+
+  // Check for invalid subscription
+  if (message.includes("invalid") || message.includes("not found")) {
+    return { isMicrosubError: true, errorType: "invalid" };
+  }
+
+  // Check for 409 Conflict (default to exhausted)
+  if (message.includes("409") || message.includes("conflict")) {
+    return { isMicrosubError: true, errorType: "exhausted" };
+  }
+
+  // Check for generic microsub/subscription errors
+  if (message.includes("microsub") || message.includes("subscription")) {
+    return { isMicrosubError: true, errorType: "invalid" };
+  }
+
+  return { isMicrosubError: false };
 }
 
 /**

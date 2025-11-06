@@ -5,7 +5,7 @@
  * Dynamic property access like process.env[key] will NOT work!
  */
 
-function isValidAddress(address: string): boolean {
+export function isValidAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 

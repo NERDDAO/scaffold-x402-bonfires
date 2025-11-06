@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
+import { MicrosubSelector } from "./MicrosubSelector";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
+import { useAgentSelection } from "@/hooks/useAgentSelection";
+import { useMicrosubSelection } from "@/hooks/useMicrosubSelection";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import type { ChatMessage as ChatMessageType, ChatResponseWithPayment, GraphMode } from "@/lib/types/delve-api";
-import { formatErrorMessage } from "@/lib/utils";
+import { formatErrorMessage, isMicrosubError } from "@/lib/utils";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import { notification } from "~~/utils/scaffold-eth/notification";
 
 interface PaidChatInterfaceProps {
   agentId: string;
@@ -15,42 +19,64 @@ interface PaidChatInterfaceProps {
 }
 
 export function PaidChatInterface({ agentId, className = "" }: PaidChatInterfaceProps) {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { buildAndSignPaymentHeader, isLoading: isSigningPayment } = usePaymentHeader();
+  const microsubSelection = useMicrosubSelection({ walletAddress: address });
+  const agentSelection = useAgentSelection();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payment, setPayment] = useState<ChatResponseWithPayment["payment"] | null>(null);
   const [graphMode, setGraphMode] = useState<GraphMode>("adaptive");
+  const [isRetrying, setIsRetrying] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: ChatMessageType = { role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
+  // Core send function that performs the fetch
+  const send = async (messageText: string, chatHistory: ChatMessageType[], retrying: boolean) => {
     setError(null);
     setIsLoading(true);
 
     try {
-      const paymentHeader = await buildAndSignPaymentHeader();
+      // Pre-request validation: check if selected microsub is valid
+      if (!retrying) {
+        const validation = microsubSelection.validateSelectedMicrosub();
+        if (!validation.isValid) {
+          notification.error(
+            "Selected subscription is invalid. Please select a different subscription or use new payment.",
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Check if using existing microsub or creating new payment
+      const paymentHeader = microsubSelection.selectedMicrosub
+        ? await buildAndSignPaymentHeader(undefined, true)
+        : await buildAndSignPaymentHeader();
+
+      // Build request body with either tx_hash or payment_header
+      const requestBody: any = {
+        message: messageText,
+        chat_history: chatHistory,
+        agent_id: agentId,
+        graph_mode: graphMode,
+      };
+
+      if (microsubSelection.selectedMicrosub) {
+        requestBody.tx_hash = microsubSelection.selectedMicrosub.tx_hash;
+      } else if (paymentHeader) {
+        requestBody.payment_header = paymentHeader;
+      }
 
       const response = await fetch(`/api/agents/${agentId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: input,
-          chat_history: messages,
-          agent_id: agentId,
-          graph_mode: graphMode,
-          payment_header: paymentHeader,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -61,11 +87,69 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
       const data: ChatResponseWithPayment = await response.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       setPayment(data.payment);
+      setIsRetrying(false);
+      setIsLoading(false);
+
+      // Refetch microsubs to update queries_remaining count
+      microsubSelection.refetch();
     } catch (err) {
+      // Use centralized error detection
+      const microsubErrorInfo = isMicrosubError(err);
+
+      if (microsubErrorInfo.isMicrosubError && !retrying) {
+        // First retry attempt - tailor message based on error type
+        let warningMessage = "Subscription issue detected. Retrying with new payment...";
+        if (microsubErrorInfo.errorType === "expired") {
+          warningMessage = "Subscription expired during request. Retrying with new payment...";
+        } else if (microsubErrorInfo.errorType === "exhausted") {
+          warningMessage = "Subscription exhausted during request. Retrying with new payment...";
+        }
+
+        notification.warning(warningMessage, { duration: 4000 });
+        microsubSelection.clearSelection();
+        setIsRetrying(true);
+
+        // Wait 1 second before retrying with same parameters
+        setTimeout(() => {
+          send(messageText, chatHistory, true);
+        }, 1000);
+        return;
+      } else if (microsubErrorInfo.isMicrosubError && retrying) {
+        // Retry failed
+        notification.error("Subscription issue persists and retry failed. Please try again with a new payment.");
+        setIsRetrying(false);
+      }
+
       setError(formatErrorMessage(err));
-    } finally {
       setIsLoading(false);
     }
+  };
+
+  // Wrapper that prepares state before calling send
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: ChatMessageType = { role: "user", content: input };
+    const messageText = input;
+
+    // Pre-request validation: check if selected microsub is valid before mutating UI
+    const validation = microsubSelection.validateSelectedMicrosub();
+    if (!validation.isValid) {
+      notification.error(
+        "Selected subscription is invalid. Please select a different subscription or use new payment.",
+      );
+      return;
+    }
+
+    // Build next chat history with the new user message
+    const nextHistory = [...messages, userMessage];
+
+    // Only mutate UI after validation passes
+    setMessages(nextHistory);
+    setInput("");
+
+    // Call send with the message text and complete history
+    await send(messageText, nextHistory, false);
   };
 
   if (!isConnected) {
@@ -100,6 +184,16 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
           </div>
         </div>
 
+        <MicrosubSelector
+          availableMicrosubs={microsubSelection.availableMicrosubs}
+          selectedMicrosub={microsubSelection.selectedMicrosub}
+          loading={microsubSelection.loading}
+          error={microsubSelection.error}
+          onSelectMicrosub={microsubSelection.selectMicrosub}
+          availableAgents={agentSelection.availableAgents}
+          className="mb-4"
+        />
+
         <div className="bg-base-200 rounded-lg p-4 h-96 overflow-y-auto mb-4">
           {messages.length === 0 && (
             <div className="text-center text-base-content/50 mt-20">Start a conversation...</div>
@@ -133,14 +227,20 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
                 handleSend();
               }
             }}
-            disabled={isLoading || isSigningPayment}
+            disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
           />
           <button
             className="btn btn-primary"
             onClick={handleSend}
-            disabled={!input.trim() || isLoading || isSigningPayment}
+            disabled={!input.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
           >
-            {isLoading || isSigningPayment ? <span className="loading loading-spinner"></span> : "Send"}
+            {isRetrying ? (
+              "Retrying..."
+            ) : isLoading || isSigningPayment ? (
+              <span className="loading loading-spinner"></span>
+            ) : (
+              "Send"
+            )}
           </button>
         </div>
       </div>

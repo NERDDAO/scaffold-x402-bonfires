@@ -17,7 +17,7 @@ import { createErrorFromResponse } from "@/lib/types/errors";
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ agent_id: string }> }) {
   try {
-    // Extract agent_id from route params
+    // Extract agent_id from route params (await required in Next.js 15+)
     const { agent_id } = await params;
 
     if (!agent_id || typeof agent_id !== "string") {

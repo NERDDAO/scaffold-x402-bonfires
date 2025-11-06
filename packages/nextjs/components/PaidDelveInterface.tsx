@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { MicrosubSelector } from "./MicrosubSelector";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
+import { useAgentSelection } from "@/hooks/useAgentSelection";
+import { useMicrosubSelection } from "@/hooks/useMicrosubSelection";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import type { DelveResponseWithPayment } from "@/lib/types/delve-api";
-import { formatErrorMessage } from "@/lib/utils";
+import { formatErrorMessage, isMicrosubError } from "@/lib/utils";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import { notification } from "~~/utils/scaffold-eth/notification";
 
 interface PaidDelveInterfaceProps {
   agentId: string;
@@ -14,32 +18,57 @@ interface PaidDelveInterfaceProps {
 }
 
 export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfaceProps) {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { buildAndSignPaymentHeader, isLoading: isSigningPayment } = usePaymentHeader();
+  const microsubSelection = useMicrosubSelection({ walletAddress: address });
+  const agentSelection = useAgentSelection();
   const [query, setQuery] = useState("");
   const [numResults, setNumResults] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<DelveResponseWithPayment | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "results">("overview");
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  const handleSearch = async () => {
-    if (!query.trim() || isLoading) return;
-
+  // Core search function that performs the fetch
+  const search = async (searchQuery: string, resultsCount: number, retrying: boolean) => {
     setError(null);
     setIsLoading(true);
 
     try {
-      const paymentHeader = await buildAndSignPaymentHeader();
+      // Pre-request validation: check if selected microsub is valid
+      if (!retrying) {
+        const validation = microsubSelection.validateSelectedMicrosub();
+        if (!validation.isValid) {
+          notification.error(
+            "Selected subscription is invalid. Please select a different subscription or use new payment.",
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Check if using existing microsub or creating new payment
+      const paymentHeader = microsubSelection.selectedMicrosub
+        ? await buildAndSignPaymentHeader(undefined, true)
+        : await buildAndSignPaymentHeader();
+
+      // Build request body with either tx_hash or payment_header
+      const requestBody: any = {
+        query: searchQuery,
+        num_results: resultsCount,
+      };
+
+      if (microsubSelection.selectedMicrosub) {
+        requestBody.tx_hash = microsubSelection.selectedMicrosub.tx_hash;
+      } else if (paymentHeader) {
+        requestBody.payment_header = paymentHeader;
+      }
 
       const response = await fetch(`/api/agents/${agentId}/delve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          num_results: numResults,
-          payment_header: paymentHeader,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -50,11 +79,56 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
       const data: DelveResponseWithPayment = await response.json();
       setResults(data);
       setActiveTab("results");
+      setIsRetrying(false);
+      setIsLoading(false);
     } catch (err) {
+      // Use centralized error detection
+      const microsubErrorInfo = isMicrosubError(err);
+
+      if (microsubErrorInfo.isMicrosubError && !retrying) {
+        // First retry attempt - tailor message based on error type
+        let warningMessage = "Subscription issue detected. Retrying with new payment...";
+        if (microsubErrorInfo.errorType === "expired") {
+          warningMessage = "Subscription expired during search. Retrying with new payment...";
+        } else if (microsubErrorInfo.errorType === "exhausted") {
+          warningMessage = "Subscription exhausted during search. Retrying with new payment...";
+        }
+
+        notification.warning(warningMessage, { duration: 4000 });
+        microsubSelection.clearSelection();
+        setIsRetrying(true);
+
+        // Wait 1 second before retrying with same parameters
+        setTimeout(() => {
+          search(searchQuery, resultsCount, true);
+        }, 1000);
+        return;
+      } else if (microsubErrorInfo.isMicrosubError && retrying) {
+        // Retry failed
+        notification.error("Subscription issue persists and retry failed. Please try again with a new payment.");
+        setIsRetrying(false);
+      }
+
       setError(formatErrorMessage(err));
-    } finally {
       setIsLoading(false);
     }
+  };
+
+  // Wrapper that prepares state before calling search
+  const handleSearch = async () => {
+    if (!query.trim() || isLoading) return;
+
+    // Pre-request validation: check if selected microsub is valid
+    const validation = microsubSelection.validateSelectedMicrosub();
+    if (!validation.isValid) {
+      notification.error(
+        "Selected subscription is invalid. Please select a different subscription or use new payment.",
+      );
+      return;
+    }
+
+    // Call search with current query and numResults
+    await search(query, numResults, false);
   };
 
   if (!isConnected) {
@@ -77,6 +151,16 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
           <PaymentStatusBadge payment={results?.payment} />
         </div>
 
+        <MicrosubSelector
+          availableMicrosubs={microsubSelection.availableMicrosubs}
+          selectedMicrosub={microsubSelection.selectedMicrosub}
+          loading={microsubSelection.loading}
+          error={microsubSelection.error}
+          onSelectMicrosub={microsubSelection.selectMicrosub}
+          availableAgents={agentSelection.availableAgents}
+          className="mb-4"
+        />
+
         <div className="flex gap-2 mb-4">
           <input
             type="text"
@@ -85,13 +169,13 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSearch()}
-            disabled={isLoading || isSigningPayment}
+            disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
           />
           <select
             className="select select-bordered"
             value={numResults}
             onChange={e => setNumResults(parseInt(e.target.value))}
-            disabled={isLoading}
+            disabled={isLoading || microsubSelection.loading || isRetrying}
           >
             <option value={5}>5 results</option>
             <option value={10}>10 results</option>
@@ -101,9 +185,15 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
           <button
             className="btn btn-primary"
             onClick={handleSearch}
-            disabled={!query.trim() || isLoading || isSigningPayment}
+            disabled={!query.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
           >
-            {isLoading || isSigningPayment ? <span className="loading loading-spinner"></span> : "Search"}
+            {isRetrying ? (
+              "Retrying..."
+            ) : isLoading || isSigningPayment ? (
+              <span className="loading loading-spinner"></span>
+            ) : (
+              "Search"
+            )}
           </button>
         </div>
 
