@@ -10,6 +10,7 @@ interface UseMicrosubSelectionConfig {
   walletAddress?: string | null;
   autoSelectValid?: boolean;
   onInvalidSelection?: (reason: "expired" | "exhausted" | "invalid") => void;
+  onlyDataRooms?: boolean;
 }
 
 export function useMicrosubSelection(config?: UseMicrosubSelectionConfig) {
@@ -44,7 +45,9 @@ export function useMicrosubSelection(config?: UseMicrosubSelectionConfig) {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/microsubs?wallet_address=${encodeURIComponent(config.walletAddress)}`, {
+    const apiUrl = `/api/microsubs?wallet_address=${encodeURIComponent(config.walletAddress)}${config?.onlyDataRooms ? "&only_data_rooms=true" : ""}`;
+
+    fetch(apiUrl, {
       signal: abortController.signal,
     })
       .then(res => {
@@ -84,7 +87,7 @@ export function useMicrosubSelection(config?: UseMicrosubSelectionConfig) {
       mounted = false;
       abortController.abort();
     };
-  }, [config?.walletAddress, config?.autoSelectValid, refetchTrigger]);
+  }, [config?.walletAddress, config?.autoSelectValid, config?.onlyDataRooms, refetchTrigger]);
 
   // Refetch function to manually trigger microsub refresh
   const refetch = useCallback(() => {

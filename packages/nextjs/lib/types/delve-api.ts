@@ -170,10 +170,94 @@ export interface MicrosubInfo {
   queries_used?: number;
   created_by_address?: string;
   is_valid?: boolean;
+  // Data room configuration fields (optional)
+  dataroom_id?: string;
+  description?: string;
+  center_node_uuid?: string;
+  system_prompt?: string;
+  bonfire_id?: string;
 }
 
 export interface MicrosubListResponse {
   microsubs: MicrosubInfo[];
   total_count: number;
   active_count: number;
+}
+
+export interface PreviewRequest {
+  query: string;
+  num_results?: number;
+  agent_config_id?: string;
+}
+
+export interface DataRoomConfig {
+  bonfireId: string;
+  bonfire: BonfireInfo;
+  description: string;
+  systemPrompt?: string;
+  centerNodeUuid: string;
+  centerNodeName: string;
+  priceUsd: number;
+  queryLimit: number;
+  expirationDays: number;
+}
+
+/**
+ * Represents a marketplace listing for a data room
+ * Matches backend DataRoomInfo DTO
+ */
+export interface DataRoomInfo {
+  id: string;
+  creator_id: string;
+  bonfire_id: string;
+  description: string;
+  system_prompt?: string;
+  center_node_uuid?: string;
+  price_usd: number;
+  query_limit: number;
+  expiration_days: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Enriched fields
+  creator_name?: string;
+  creator_username?: string;
+  bonfire_name?: string;
+  agent_id?: string;
+}
+
+/**
+ * Paginated response for marketplace listings
+ */
+export interface DataRoomListResponse {
+  datarooms: DataRoomInfo[];
+  count: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Request payload for creating new marketplace listings
+ */
+export interface CreateDataRoomRequest {
+  agent_id: string;
+  bonfire_id: string;
+  description: string;
+  system_prompt: string; // Required by backend (can be empty string)
+  center_node_uuid?: string;
+  price_usd: number;
+  query_limit: number;
+  expiration_days: number;
+}
+
+/**
+ * Contains fresh preview entities from a data room's bonfire
+ */
+export interface DataRoomPreviewResponse {
+  entities: Record<string, any>[];
+  episodes: Record<string, any>[];
+  edges: Record<string, any>[];
+  dataroom_id: string;
+  description: string;
+  num_results: number;
 }

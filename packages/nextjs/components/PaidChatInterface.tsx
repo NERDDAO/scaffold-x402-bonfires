@@ -2,23 +2,38 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
+import { DataRoomWizard } from "./DataRoomWizard";
 import { MicrosubSelector } from "./MicrosubSelector";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
 import { useAgentSelection } from "@/hooks/useAgentSelection";
 import { useMicrosubSelection } from "@/hooks/useMicrosubSelection";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
-import type { ChatMessage as ChatMessageType, ChatResponseWithPayment, GraphMode } from "@/lib/types/delve-api";
-import { formatErrorMessage, isMicrosubError } from "@/lib/utils";
+import type {
+  ChatMessage as ChatMessageType,
+  ChatResponseWithPayment,
+  DataRoomConfig,
+  GraphMode,
+} from "@/lib/types/delve-api";
+import { formatErrorMessage, isMicrosubError, truncateAddress, truncateText } from "@/lib/utils";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { notification } from "~~/utils/scaffold-eth/notification";
 
 interface PaidChatInterfaceProps {
   agentId: string;
+  dataroomId?: string; // Optional DataRoom ID to subscribe to. When provided and no active subscription exists, the first payment will create a microsub linked to this DataRoom, inheriting all its settings.
+  selectedMicrosubTxHash?: string; // Optional tx_hash to auto-select an existing subscription on mount
+  onSubscriptionCreated?: (txHash: string) => void; // Callback fired when a new subscription is created
   className?: string;
 }
 
-export function PaidChatInterface({ agentId, className = "" }: PaidChatInterfaceProps) {
+export function PaidChatInterface({
+  agentId,
+  dataroomId,
+  selectedMicrosubTxHash,
+  onSubscriptionCreated,
+  className = "",
+}: PaidChatInterfaceProps) {
   const { isConnected, address } = useAccount();
   const { buildAndSignPaymentHeader, isLoading: isSigningPayment } = usePaymentHeader();
   const microsubSelection = useMicrosubSelection({ walletAddress: address });
@@ -30,11 +45,37 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
   const [payment, setPayment] = useState<ChatResponseWithPayment["payment"] | null>(null);
   const [graphMode, setGraphMode] = useState<GraphMode>("adaptive");
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [pendingDataRoomConfig, setPendingDataRoomConfig] = useState<DataRoomConfig | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-select subscription on mount if provided
+  useEffect(() => {
+    if (
+      selectedMicrosubTxHash &&
+      microsubSelection.availableMicrosubs &&
+      microsubSelection.selectedMicrosub?.tx_hash !== selectedMicrosubTxHash
+    ) {
+      microsubSelection.selectMicrosub(selectedMicrosubTxHash);
+    }
+  }, [
+    selectedMicrosubTxHash,
+    microsubSelection.availableMicrosubs,
+    microsubSelection.selectedMicrosub?.tx_hash,
+    microsubSelection.selectMicrosub,
+  ]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleOpenWizard = () => setIsWizardOpen(true);
+  const handleCloseWizard = () => setIsWizardOpen(false);
+  const handleWizardComplete = (config: DataRoomConfig) => {
+    setPendingDataRoomConfig(config);
+    microsubSelection.clearSelection(); // Ensure "Use New Payment" is selected
+    notification.success(`Data room configured: ${config.description.slice(0, 50)}...`);
+  };
 
   // Core send function that performs the fetch
   const send = async (messageText: string, chatHistory: ChatMessageType[], retrying: boolean) => {
@@ -73,6 +114,19 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
         requestBody.payment_header = paymentHeader;
       }
 
+      // Include data room configuration if creating new payment
+      if (pendingDataRoomConfig && !microsubSelection.selectedMicrosub) {
+        requestBody.description = pendingDataRoomConfig.description;
+        requestBody.system_prompt = pendingDataRoomConfig.systemPrompt;
+        requestBody.center_node_uuid = pendingDataRoomConfig.centerNodeUuid;
+        requestBody.bonfire_id = pendingDataRoomConfig.bonfireId;
+      }
+
+      // Include dataroomId if provided (for marketplace subscriptions)
+      if (dataroomId && !microsubSelection.selectedMicrosub) {
+        requestBody.dataroom_id = dataroomId;
+      }
+
       const response = await fetch(`/api/agents/${agentId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,8 +141,14 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
       const data: ChatResponseWithPayment = await response.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       setPayment(data.payment);
+      setPendingDataRoomConfig(null); // Clear pending config after successful creation
       setIsRetrying(false);
       setIsLoading(false);
+
+      // If a new subscription was created (tx_hash present and no prior selection), notify parent
+      if (data.payment?.tx_hash && !microsubSelection.selectedMicrosub && onSubscriptionCreated) {
+        onSubscriptionCreated(data.payment.tx_hash);
+      }
 
       // Refetch microsubs to update queries_remaining count
       microsubSelection.refetch();
@@ -194,6 +254,53 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
           className="mb-4"
         />
 
+        <div className="flex justify-between items-center mb-4">
+          <button
+            className="btn btn-sm btn-outline btn-primary"
+            onClick={handleOpenWizard}
+            disabled={isLoading || isSigningPayment || microsubSelection.loading}
+          >
+            ➕ Create Data Room
+          </button>
+          {pendingDataRoomConfig && (
+            <div className="badge badge-info gap-2">
+              📁 {truncateText(pendingDataRoomConfig.description, 30)}
+              <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+
+        {dataroomId && !microsubSelection.selectedMicrosub && (
+          <div className="alert alert-info mb-4">
+            <div className="flex-1">
+              <div className="text-sm font-semibold mb-1">📁 Subscribing to Data Room</div>
+              <div className="text-xs opacity-80">
+                Your first message will create a subscription to this data room. You&apos;ll be prompted to sign a
+                payment.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {microsubSelection.selectedMicrosub?.description && (
+          <div className="alert alert-info mb-4">
+            <div className="flex-1">
+              <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
+              <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
+              {microsubSelection.selectedMicrosub.system_prompt && (
+                <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
+              )}
+              {microsubSelection.selectedMicrosub.center_node_uuid && (
+                <div className="text-xs opacity-70 mt-1">
+                  🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="bg-base-200 rounded-lg p-4 h-96 overflow-y-auto mb-4">
           {messages.length === 0 && (
             <div className="text-center text-base-content/50 mt-20">Start a conversation...</div>
@@ -243,6 +350,8 @@ export function PaidChatInterface({ agentId, className = "" }: PaidChatInterface
             )}
           </button>
         </div>
+
+        <DataRoomWizard isOpen={isWizardOpen} onClose={handleCloseWizard} onComplete={handleWizardComplete} />
       </div>
     </div>
   );

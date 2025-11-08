@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { DataRoomWizard } from "./DataRoomWizard";
 import { MicrosubSelector } from "./MicrosubSelector";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
 import { useAgentSelection } from "@/hooks/useAgentSelection";
 import { useMicrosubSelection } from "@/hooks/useMicrosubSelection";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
-import type { DelveResponseWithPayment } from "@/lib/types/delve-api";
-import { formatErrorMessage, isMicrosubError } from "@/lib/utils";
+import type { DataRoomConfig, DelveResponseWithPayment } from "@/lib/types/delve-api";
+import { formatErrorMessage, isMicrosubError, truncateAddress, truncateText } from "@/lib/utils";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { notification } from "~~/utils/scaffold-eth/notification";
@@ -29,6 +30,16 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
   const [results, setResults] = useState<DelveResponseWithPayment | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "results">("overview");
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [pendingDataRoomConfig, setPendingDataRoomConfig] = useState<DataRoomConfig | null>(null);
+
+  const handleOpenWizard = () => setIsWizardOpen(true);
+  const handleCloseWizard = () => setIsWizardOpen(false);
+  const handleWizardComplete = (config: DataRoomConfig) => {
+    setPendingDataRoomConfig(config);
+    microsubSelection.clearSelection(); // Ensure "Use New Payment" is selected
+    notification.success(`Data room configured: ${config.description.slice(0, 50)}...`);
+  };
 
   // Core search function that performs the fetch
   const search = async (searchQuery: string, resultsCount: number, retrying: boolean) => {
@@ -65,6 +76,19 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
         requestBody.payment_header = paymentHeader;
       }
 
+      // Include data room configuration if creating new payment
+      if (pendingDataRoomConfig && !microsubSelection.selectedMicrosub) {
+        requestBody.description = pendingDataRoomConfig.description;
+        requestBody.system_prompt = pendingDataRoomConfig.systemPrompt;
+        requestBody.center_node_uuid = pendingDataRoomConfig.centerNodeUuid;
+        requestBody.bonfire_id = pendingDataRoomConfig.bonfireId;
+      }
+
+      // Override center_node_uuid if data room config exists (takes precedence)
+      if (pendingDataRoomConfig?.centerNodeUuid) {
+        requestBody.center_node_uuid = pendingDataRoomConfig.centerNodeUuid;
+      }
+
       const response = await fetch(`/api/agents/${agentId}/delve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,6 +103,7 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
       const data: DelveResponseWithPayment = await response.json();
       setResults(data);
       setActiveTab("results");
+      setPendingDataRoomConfig(null); // Clear pending config after successful creation
       setIsRetrying(false);
       setIsLoading(false);
     } catch (err) {
@@ -160,6 +185,41 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
           availableAgents={agentSelection.availableAgents}
           className="mb-4"
         />
+
+        <div className="flex justify-between items-center mb-4">
+          <button
+            className="btn btn-sm btn-outline btn-primary"
+            onClick={handleOpenWizard}
+            disabled={isLoading || isSigningPayment || microsubSelection.loading}
+          >
+            ➕ Create Data Room
+          </button>
+          {pendingDataRoomConfig && (
+            <div className="badge badge-info gap-2">
+              📁 {truncateText(pendingDataRoomConfig.description, 30)}
+              <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+
+        {microsubSelection.selectedMicrosub?.description && (
+          <div className="alert alert-info mb-4">
+            <div className="flex-1">
+              <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
+              <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
+              {microsubSelection.selectedMicrosub.system_prompt && (
+                <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
+              )}
+              {microsubSelection.selectedMicrosub.center_node_uuid && (
+                <div className="text-xs opacity-70 mt-1">
+                  🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 mb-4">
           <input
@@ -264,6 +324,8 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
             </div>
           </div>
         )}
+
+        <DataRoomWizard isOpen={isWizardOpen} onClose={handleCloseWizard} onComplete={handleWizardComplete} />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useId, useMemo } from "react";
 import { AgentInfo, MicrosubInfo } from "~~/lib/types/delve-api";
-import { formatTimestamp, truncateAddress } from "~~/lib/utils";
+import { formatTimestamp, truncateAddress, truncateText } from "~~/lib/utils";
 
 interface MicrosubSelectorProps {
   availableMicrosubs: MicrosubInfo[];
@@ -34,6 +34,11 @@ export const MicrosubSelector: React.FC<MicrosubSelectorProps> = ({
       return agent ? agent.username || agent.name : truncateAddress(agent_id, 6);
     };
   }, [availableAgents]);
+
+  // Helper function to detect data rooms
+  const isDataRoom = (microsub: MicrosubInfo): boolean => {
+    return !!microsub.description && microsub.description.trim().length > 0;
+  };
 
   // Helper function for status badge
   const getStatusBadge = (microsub: MicrosubInfo): React.ReactElement => {
@@ -164,6 +169,24 @@ export const MicrosubSelector: React.FC<MicrosubSelectorProps> = ({
                               <span>{truncateAddress(microsub.tx_hash, 6)}</span>
                             </div>
                           </div>
+
+                          {/* Data Room Section */}
+                          {isDataRoom(microsub) && (
+                            <div className="mt-2 pt-2 border-t border-base-300 bg-base-300/50 -mx-4 -mb-4 px-4 pb-4 rounded-b-lg">
+                              <div className="space-y-2">
+                                <div className="flex gap-2 items-center">
+                                  <span className="badge badge-info badge-sm">Data Room</span>
+                                  {microsub.system_prompt && <span className="badge badge-sm">Custom Prompt</span>}
+                                </div>
+                                <p className="text-xs">{truncateText(microsub.description || "", 100)}</p>
+                                {microsub.center_node_uuid && (
+                                  <div className="text-xs opacity-70">
+                                    🎯 Center: {truncateAddress(microsub.center_node_uuid, 6)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

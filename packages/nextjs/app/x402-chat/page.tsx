@@ -1,20 +1,42 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AgentSelector } from "@/components/AgentSelector";
 import { PaidChatInterface } from "@/components/PaidChatInterface";
 import { useAgentSelection } from "@/hooks/useAgentSelection";
 import { config } from "@/lib/config";
+import type { DataRoomInfo } from "@/lib/types/delve-api";
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const urlAgentId = searchParams.get("agent");
   const urlBonfireId = searchParams.get("bonfire");
+  const urlDataRoomId = searchParams.get("dataroom");
+
+  const [dataRoom, setDataRoom] = useState<DataRoomInfo | null>(null);
 
   const agentSelection = useAgentSelection({
-    initialBonfireId: urlBonfireId,
+    initialBonfireId: urlBonfireId || dataRoom?.bonfire_id,
     initialAgentId: urlAgentId,
   });
+
+  // Fetch data room if ID is provided
+  useEffect(() => {
+    if (urlDataRoomId) {
+      fetch(`/api/datarooms/${urlDataRoomId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch data room");
+          return res.json();
+        })
+        .then((data: DataRoomInfo) => {
+          setDataRoom(data);
+        })
+        .catch(err => {
+          console.error("Error fetching data room:", err);
+        });
+    }
+  }, [urlDataRoomId]);
 
   // Use selected agent or fallback to URL param or default
   const agentId = agentSelection.selectedAgentId || urlAgentId || config.app.defaultAgentId || "default-agent";

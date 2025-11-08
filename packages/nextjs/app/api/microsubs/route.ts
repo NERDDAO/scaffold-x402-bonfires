@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const wallet_address = url.searchParams.get("wallet_address");
+    const only_data_rooms = url.searchParams.get("only_data_rooms") === "true";
 
     // Validate wallet_address parameter
     if (!wallet_address) {
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
     const delveUrl = `${config.delve.apiUrl}/microsubs?wallet_address=${encodeURIComponent(wallet_address)}`;
 
-    console.log(`Fetching microsubs for wallet: ${wallet_address}`);
+    console.log(`Fetching microsubs for wallet: ${wallet_address}${only_data_rooms ? " (data rooms only)" : ""}`);
 
     const delveResponse = await fetch(delveUrl, {
       method: "GET",
@@ -57,9 +58,18 @@ export async function GET(request: Request) {
     // Parse and return successful response
     const responseData: MicrosubListResponse = await delveResponse.json();
 
+    // Filter for data rooms if requested
+    if (only_data_rooms) {
+      responseData.microsubs = (responseData.microsubs || []).filter(
+        m => m.description && m.description.trim().length > 0,
+      );
+      responseData.total_count = responseData.microsubs.length;
+    }
+
     console.log("Microsubs fetched successfully:", {
       total: responseData.total_count,
       active: responseData.active_count,
+      filtered: only_data_rooms ? "data rooms only" : "all",
     });
 
     return NextResponse.json(responseData, { status: 200 });
