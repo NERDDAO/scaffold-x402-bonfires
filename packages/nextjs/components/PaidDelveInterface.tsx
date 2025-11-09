@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DataRoomWizard } from "./DataRoomWizard";
 import { MicrosubSelector } from "./MicrosubSelector";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
@@ -32,6 +32,17 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
   const [isRetrying, setIsRetrying] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [pendingDataRoomConfig, setPendingDataRoomConfig] = useState<DataRoomConfig | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
+  // Auto-close sidebar on microsub selection (mobile)
+  useEffect(() => {
+    if (microsubSelection.selectedMicrosub) {
+      closeSidebar();
+    }
+  }, [microsubSelection.selectedMicrosub]);
 
   const handleOpenWizard = () => setIsWizardOpen(true);
   const handleCloseWizard = () => setIsWizardOpen(false);
@@ -169,164 +180,381 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
   }
 
   return (
-    <div className={`card bg-base-100 shadow-xl ${className}`}>
-      <div className="card-body">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="card-title">Knowledge Graph Search</h2>
-          <PaymentStatusBadge payment={results?.payment} />
-        </div>
+    <>
+      {/* Desktop Layout */}
+      <div className={`hidden lg:flex h-[calc(100vh-4rem)] bg-base-100 ${className}`}>
+        {/* Sidebar */}
+        <aside className="w-80 border-r border-base-300 flex flex-col">
+          <MicrosubSelector
+            availableMicrosubs={microsubSelection.availableMicrosubs}
+            selectedMicrosub={microsubSelection.selectedMicrosub}
+            loading={microsubSelection.loading}
+            error={microsubSelection.error}
+            onSelectMicrosub={microsubSelection.selectMicrosub}
+            availableAgents={agentSelection.availableAgents}
+            isSidebarMode={true}
+            onCloseSidebar={closeSidebar}
+          />
+        </aside>
 
-        <MicrosubSelector
-          availableMicrosubs={microsubSelection.availableMicrosubs}
-          selectedMicrosub={microsubSelection.selectedMicrosub}
-          loading={microsubSelection.loading}
-          error={microsubSelection.error}
-          onSelectMicrosub={microsubSelection.selectMicrosub}
-          availableAgents={agentSelection.availableAgents}
-          className="mb-4"
-        />
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-base-300">
+            <h2 className="font-bold text-lg">Knowledge Graph Search</h2>
+            <PaymentStatusBadge payment={results?.payment} />
+          </div>
 
-        <div className="flex justify-between items-center mb-4">
-          <button
-            className="btn btn-sm btn-outline btn-primary"
-            onClick={handleOpenWizard}
-            disabled={isLoading || isSigningPayment || microsubSelection.loading}
-          >
-            ➕ Create Data Room
-          </button>
-          {pendingDataRoomConfig && (
-            <div className="badge badge-info gap-2">
-              📁 {truncateText(pendingDataRoomConfig.description, 30)}
-              <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
-                ✕
-              </button>
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-base-300">
+            <button
+              className="btn btn-sm btn-outline btn-primary"
+              onClick={handleOpenWizard}
+              disabled={isLoading || isSigningPayment || microsubSelection.loading}
+            >
+              ➕ Create Data Room
+            </button>
+            {pendingDataRoomConfig && (
+              <div className="badge badge-info gap-2">
+                📁 {truncateText(pendingDataRoomConfig.description, 30)}
+                <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Alerts */}
+          {microsubSelection.selectedMicrosub?.description && (
+            <div className="alert alert-info mx-4 mt-2">
+              <div className="flex-1">
+                <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
+                <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
+                {microsubSelection.selectedMicrosub.system_prompt && (
+                  <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
+                )}
+                {microsubSelection.selectedMicrosub.center_node_uuid && (
+                  <div className="text-xs opacity-70 mt-1">
+                    🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+                  </div>
+                )}
+              </div>
             </div>
           )}
-        </div>
 
-        {microsubSelection.selectedMicrosub?.description && (
-          <div className="alert alert-info mb-4">
-            <div className="flex-1">
-              <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
-              <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
-              {microsubSelection.selectedMicrosub.system_prompt && (
-                <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
-              )}
-              {microsubSelection.selectedMicrosub.center_node_uuid && (
-                <div className="text-xs opacity-70 mt-1">
-                  🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
-                </div>
-              )}
+          {/* Search Input */}
+          <div className="px-4 py-3 border-b border-base-300">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="input input-bordered flex-1"
+                placeholder="Enter your search query..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+              />
+              <select
+                className="select select-bordered"
+                value={numResults}
+                onChange={e => setNumResults(parseInt(e.target.value))}
+                disabled={isLoading || microsubSelection.loading || isRetrying}
+              >
+                <option value={5}>5 results</option>
+                <option value={10}>10 results</option>
+                <option value={20}>20 results</option>
+                <option value={50}>50 results</option>
+              </select>
+              <button
+                className="btn btn-primary"
+                onClick={handleSearch}
+                disabled={!query.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+              >
+                {isRetrying ? (
+                  "Retrying..."
+                ) : isLoading || isSigningPayment ? (
+                  <span className="loading loading-spinner"></span>
+                ) : (
+                  "Search"
+                )}
+              </button>
             </div>
           </div>
-        )}
 
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            className="input input-bordered flex-1"
-            placeholder="Enter your search query..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleSearch()}
-            disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
-          />
-          <select
-            className="select select-bordered"
-            value={numResults}
-            onChange={e => setNumResults(parseInt(e.target.value))}
-            disabled={isLoading || microsubSelection.loading || isRetrying}
-          >
-            <option value={5}>5 results</option>
-            <option value={10}>10 results</option>
-            <option value={20}>20 results</option>
-            <option value={50}>50 results</option>
-          </select>
-          <button
-            className="btn btn-primary"
-            onClick={handleSearch}
-            disabled={!query.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
-          >
-            {isRetrying ? (
-              "Retrying..."
-            ) : isLoading || isSigningPayment ? (
-              <span className="loading loading-spinner"></span>
-            ) : (
-              "Search"
+          {/* Error Display */}
+          {error && (
+            <div className="alert alert-error mx-4 mb-2">
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Results Area */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {results && (
+              <div className="tabs tabs-boxed mb-4">
+                <button
+                  className={`tab ${activeTab === "overview" ? "tab-active" : ""}`}
+                  onClick={() => setActiveTab("overview")}
+                >
+                  Overview
+                </button>
+                <button
+                  className={`tab ${activeTab === "results" ? "tab-active" : ""}`}
+                  onClick={() => setActiveTab("results")}
+                >
+                  Results ({(results.entities?.length || 0) + (results.episodes?.length || 0)})
+                </button>
+              </div>
             )}
-          </button>
+
+            {results && activeTab === "overview" && (
+              <div className="stats stats-vertical lg:stats-horizontal shadow">
+                <div className="stat">
+                  <div className="stat-title">Entities</div>
+                  <div className="stat-value">{results.metrics?.entity_count || 0}</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Episodes</div>
+                  <div className="stat-value">{results.metrics?.episode_count || 0}</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Edges</div>
+                  <div className="stat-value">{results.metrics?.edge_count || 0}</div>
+                </div>
+              </div>
+            )}
+
+            {results && activeTab === "results" && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-bold mb-2">Entities ({results.entities?.length || 0})</h3>
+                  {results.entities?.map((entity: any, idx: number) => (
+                    <div key={idx} className="card bg-base-200 shadow-sm mb-2">
+                      <div className="card-body p-4">
+                        <div className="badge badge-primary">Entity</div>
+                        <p className="font-semibold">{entity.name || "Unnamed"}</p>
+                        <p className="text-sm opacity-70">{entity.summary || ""}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h3 className="font-bold mb-2">Episodes ({results.episodes?.length || 0})</h3>
+                  {results.episodes?.map((episode: any, idx: number) => (
+                    <div key={idx} className="card bg-base-200 shadow-sm mb-2">
+                      <div className="card-body p-4">
+                        <div className="badge badge-secondary">Episode</div>
+                        <p className="text-sm">{episode.content || episode.summary || ""}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Mobile Layout with Drawer */}
+      <div className="drawer lg:hidden">
+        <input
+          id="delve-sidebar-drawer"
+          type="checkbox"
+          className="drawer-toggle"
+          checked={isSidebarOpen}
+          onChange={toggleSidebar}
+        />
+        <div className="drawer-content flex flex-col h-[calc(100vh-4rem)]">
+          {/* Main Content for Mobile */}
+          <main className="flex-1 flex flex-col overflow-hidden bg-base-100">
+            {/* Header with Toggle Button */}
+            <div className="flex items-center justify-between p-4 border-b border-base-300">
+              <div className="flex items-center gap-2">
+                <button className="btn btn-ghost btn-sm" onClick={toggleSidebar}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="inline-block w-5 h-5 stroke-current"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <h2 className="font-bold text-lg">Knowledge Graph Search</h2>
+              </div>
+              <PaymentStatusBadge payment={results?.payment} />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-base-300">
+              <button
+                className="btn btn-sm btn-outline btn-primary"
+                onClick={handleOpenWizard}
+                disabled={isLoading || isSigningPayment || microsubSelection.loading}
+              >
+                ➕ Create Data Room
+              </button>
+              {pendingDataRoomConfig && (
+                <div className="badge badge-info gap-2">
+                  📁 {truncateText(pendingDataRoomConfig.description, 30)}
+                  <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Alerts */}
+            {microsubSelection.selectedMicrosub?.description && (
+              <div className="alert alert-info mx-4 mt-2">
+                <div className="flex-1">
+                  <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
+                  <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
+                  {microsubSelection.selectedMicrosub.system_prompt && (
+                    <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
+                  )}
+                  {microsubSelection.selectedMicrosub.center_node_uuid && (
+                    <div className="text-xs opacity-70 mt-1">
+                      🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Search Input */}
+            <div className="px-4 py-3 border-b border-base-300">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input input-bordered flex-1"
+                  placeholder="Enter your search query..."
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+                />
+                <select
+                  className="select select-bordered"
+                  value={numResults}
+                  onChange={e => setNumResults(parseInt(e.target.value))}
+                  disabled={isLoading || microsubSelection.loading || isRetrying}
+                >
+                  <option value={5}>5 results</option>
+                  <option value={10}>10 results</option>
+                  <option value={20}>20 results</option>
+                  <option value={50}>50 results</option>
+                </select>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSearch}
+                  disabled={!query.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+                >
+                  {isRetrying ? (
+                    "Retrying..."
+                  ) : isLoading || isSigningPayment ? (
+                    <span className="loading loading-spinner"></span>
+                  ) : (
+                    "Search"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="alert alert-error mx-4 mb-2">
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Results Area */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {results && (
+                <div className="tabs tabs-boxed mb-4">
+                  <button
+                    className={`tab ${activeTab === "overview" ? "tab-active" : ""}`}
+                    onClick={() => setActiveTab("overview")}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    className={`tab ${activeTab === "results" ? "tab-active" : ""}`}
+                    onClick={() => setActiveTab("results")}
+                  >
+                    Results ({(results.entities?.length || 0) + (results.episodes?.length || 0)})
+                  </button>
+                </div>
+              )}
+
+              {results && activeTab === "overview" && (
+                <div className="stats stats-vertical lg:stats-horizontal shadow">
+                  <div className="stat">
+                    <div className="stat-title">Entities</div>
+                    <div className="stat-value">{results.metrics?.entity_count || 0}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Episodes</div>
+                    <div className="stat-value">{results.metrics?.episode_count || 0}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Edges</div>
+                    <div className="stat-value">{results.metrics?.edge_count || 0}</div>
+                  </div>
+                </div>
+              )}
+
+              {results && activeTab === "results" && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-bold mb-2">Entities ({results.entities?.length || 0})</h3>
+                    {results.entities?.map((entity: any, idx: number) => (
+                      <div key={idx} className="card bg-base-200 shadow-sm mb-2">
+                        <div className="card-body p-4">
+                          <div className="badge badge-primary">Entity</div>
+                          <p className="font-semibold">{entity.name || "Unnamed"}</p>
+                          <p className="text-sm opacity-70">{entity.summary || ""}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <h3 className="font-bold mb-2">Episodes ({results.episodes?.length || 0})</h3>
+                    {results.episodes?.map((episode: any, idx: number) => (
+                      <div key={idx} className="card bg-base-200 shadow-sm mb-2">
+                        <div className="card-body p-4">
+                          <div className="badge badge-secondary">Episode</div>
+                          <p className="text-sm">{episode.content || episode.summary || ""}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </main>
         </div>
 
-        {error && (
-          <div className="alert alert-error mb-4">
-            <span>{error}</span>
-          </div>
-        )}
-
-        {results && (
-          <div className="tabs tabs-boxed mb-4">
-            <button
-              className={`tab ${activeTab === "overview" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("overview")}
-            >
-              Overview
-            </button>
-            <button
-              className={`tab ${activeTab === "results" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("results")}
-            >
-              Results ({(results.entities?.length || 0) + (results.episodes?.length || 0)})
-            </button>
-          </div>
-        )}
-
-        {results && activeTab === "overview" && (
-          <div className="stats stats-vertical lg:stats-horizontal shadow">
-            <div className="stat">
-              <div className="stat-title">Entities</div>
-              <div className="stat-value">{results.metrics?.entity_count || 0}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-title">Episodes</div>
-              <div className="stat-value">{results.metrics?.episode_count || 0}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-title">Edges</div>
-              <div className="stat-value">{results.metrics?.edge_count || 0}</div>
-            </div>
-          </div>
-        )}
-
-        {results && activeTab === "results" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-            <div>
-              <h3 className="font-bold mb-2">Entities ({results.entities?.length || 0})</h3>
-              {results.entities?.map((entity: any, idx: number) => (
-                <div key={idx} className="card bg-base-200 shadow-sm mb-2">
-                  <div className="card-body p-4">
-                    <div className="badge badge-primary">Entity</div>
-                    <p className="font-semibold">{entity.name || "Unnamed"}</p>
-                    <p className="text-sm opacity-70">{entity.summary || ""}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div>
-              <h3 className="font-bold mb-2">Episodes ({results.episodes?.length || 0})</h3>
-              {results.episodes?.map((episode: any, idx: number) => (
-                <div key={idx} className="card bg-base-200 shadow-sm mb-2">
-                  <div className="card-body p-4">
-                    <div className="badge badge-secondary">Episode</div>
-                    <p className="text-sm">{episode.content || episode.summary || ""}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <DataRoomWizard isOpen={isWizardOpen} onClose={handleCloseWizard} onComplete={handleWizardComplete} />
+        {/* Drawer Sidebar */}
+        <div className="drawer-side z-40">
+          <label htmlFor="delve-sidebar-drawer" className="drawer-overlay"></label>
+          <aside className="w-80 h-full bg-base-100">
+            <MicrosubSelector
+              availableMicrosubs={microsubSelection.availableMicrosubs}
+              selectedMicrosub={microsubSelection.selectedMicrosub}
+              loading={microsubSelection.loading}
+              error={microsubSelection.error}
+              onSelectMicrosub={microsubSelection.selectMicrosub}
+              availableAgents={agentSelection.availableAgents}
+              isSidebarMode={true}
+              onCloseSidebar={closeSidebar}
+            />
+          </aside>
+        </div>
       </div>
-    </div>
+
+      {/* DataRoomWizard Modal (shared by both layouts) */}
+      <DataRoomWizard isOpen={isWizardOpen} onClose={handleCloseWizard} onComplete={handleWizardComplete} />
+    </>
   );
 }

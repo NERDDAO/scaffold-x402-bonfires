@@ -22,6 +22,9 @@ import { notification } from "~~/utils/scaffold-eth/notification";
 interface PaidChatInterfaceProps {
   agentId: string;
   dataroomId?: string; // Optional DataRoom ID to subscribe to. When provided and no active subscription exists, the first payment will create a microsub linked to this DataRoom, inheriting all its settings.
+  dataroomDescription?: string; // Optional DataRoom description to show in placeholder when no messages exist
+  dataroomCenterNodeUuid?: string; // Optional center node UUID to use for DataRoom context
+  initialGraphMode?: GraphMode; // Optional initial graph mode (defaults to 'adaptive'). Use 'dynamic' for DataRoom queries to ensure search nodes are included
   selectedMicrosubTxHash?: string; // Optional tx_hash to auto-select an existing subscription on mount
   onSubscriptionCreated?: (txHash: string) => void; // Callback fired when a new subscription is created
   className?: string;
@@ -30,6 +33,9 @@ interface PaidChatInterfaceProps {
 export function PaidChatInterface({
   agentId,
   dataroomId,
+  dataroomDescription,
+  dataroomCenterNodeUuid,
+  initialGraphMode,
   selectedMicrosubTxHash,
   onSubscriptionCreated,
   className = "",
@@ -43,11 +49,15 @@ export function PaidChatInterface({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payment, setPayment] = useState<ChatResponseWithPayment["payment"] | null>(null);
-  const [graphMode, setGraphMode] = useState<GraphMode>("adaptive");
+  const [graphMode, setGraphMode] = useState<GraphMode>(initialGraphMode || "adaptive");
   const [isRetrying, setIsRetrying] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [pendingDataRoomConfig, setPendingDataRoomConfig] = useState<DataRoomConfig | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   // Auto-select subscription on mount if provided
   useEffect(() => {
@@ -64,6 +74,13 @@ export function PaidChatInterface({
     microsubSelection.selectedMicrosub?.tx_hash,
     microsubSelection.selectMicrosub,
   ]);
+
+  // Auto-close sidebar on microsub selection (mobile)
+  useEffect(() => {
+    if (microsubSelection.selectedMicrosub) {
+      closeSidebar();
+    }
+  }, [microsubSelection.selectedMicrosub]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -110,6 +127,10 @@ export function PaidChatInterface({
 
       if (microsubSelection.selectedMicrosub) {
         requestBody.tx_hash = microsubSelection.selectedMicrosub.tx_hash;
+        // Comment 3: Include center_node_uuid from selected microsub
+        if (microsubSelection.selectedMicrosub.center_node_uuid) {
+          requestBody.center_node_uuid = microsubSelection.selectedMicrosub.center_node_uuid;
+        }
       } else if (paymentHeader) {
         requestBody.payment_header = paymentHeader;
       }
@@ -125,6 +146,10 @@ export function PaidChatInterface({
       // Include dataroomId if provided (for marketplace subscriptions)
       if (dataroomId && !microsubSelection.selectedMicrosub) {
         requestBody.dataroom_id = dataroomId;
+        // Comment 3: Include dataroomCenterNodeUuid when creating new subscription
+        if (dataroomCenterNodeUuid) {
+          requestBody.center_node_uuid = dataroomCenterNodeUuid;
+        }
       }
 
       const response = await fetch(`/api/agents/${agentId}/chat`, {
@@ -225,134 +250,325 @@ export function PaidChatInterface({
   }
 
   return (
-    <div className={`card bg-base-100 shadow-xl ${className}`}>
-      <div className="card-body">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="card-title">AI Agent Chat</h2>
-          <div className="flex gap-2 items-center">
-            <select
-              className="select select-sm select-bordered"
-              value={graphMode}
-              onChange={e => setGraphMode(e.target.value as GraphMode)}
-            >
-              <option value="adaptive">Adaptive</option>
-              <option value="static">Static</option>
-              <option value="dynamic">Dynamic</option>
-              <option value="none">None</option>
-            </select>
-            <PaymentStatusBadge payment={payment || undefined} />
-          </div>
-        </div>
+    <>
+      {/* Desktop Layout */}
+      <div className={`hidden lg:flex h-[calc(100vh-4rem)] bg-base-100 ${className}`}>
+        {/* Sidebar */}
+        <aside className="w-80 border-r border-base-300 flex flex-col">
+          <MicrosubSelector
+            availableMicrosubs={microsubSelection.availableMicrosubs}
+            selectedMicrosub={microsubSelection.selectedMicrosub}
+            loading={microsubSelection.loading}
+            error={microsubSelection.error}
+            onSelectMicrosub={microsubSelection.selectMicrosub}
+            availableAgents={agentSelection.availableAgents}
+            isSidebarMode={true}
+            onCloseSidebar={closeSidebar}
+          />
+        </aside>
 
-        <MicrosubSelector
-          availableMicrosubs={microsubSelection.availableMicrosubs}
-          selectedMicrosub={microsubSelection.selectedMicrosub}
-          loading={microsubSelection.loading}
-          error={microsubSelection.error}
-          onSelectMicrosub={microsubSelection.selectMicrosub}
-          availableAgents={agentSelection.availableAgents}
-          className="mb-4"
-        />
-
-        <div className="flex justify-between items-center mb-4">
-          <button
-            className="btn btn-sm btn-outline btn-primary"
-            onClick={handleOpenWizard}
-            disabled={isLoading || isSigningPayment || microsubSelection.loading}
-          >
-            ➕ Create Data Room
-          </button>
-          {pendingDataRoomConfig && (
-            <div className="badge badge-info gap-2">
-              📁 {truncateText(pendingDataRoomConfig.description, 30)}
-              <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
-                ✕
-              </button>
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-base-300">
+            <h2 className="font-bold text-lg">AI Agent Chat</h2>
+            <div className="flex gap-2 items-center">
+              <select
+                className="select select-sm select-bordered"
+                value={graphMode}
+                onChange={e => setGraphMode(e.target.value as GraphMode)}
+              >
+                <option value="adaptive">Adaptive</option>
+                <option value="static">Static</option>
+                <option value="dynamic">Dynamic</option>
+                <option value="none">None</option>
+              </select>
+              <PaymentStatusBadge payment={payment || undefined} />
             </div>
-          )}
-        </div>
+          </div>
 
-        {dataroomId && !microsubSelection.selectedMicrosub && (
-          <div className="alert alert-info mb-4">
-            <div className="flex-1">
-              <div className="text-sm font-semibold mb-1">📁 Subscribing to Data Room</div>
-              <div className="text-xs opacity-80">
-                Your first message will create a subscription to this data room. You&apos;ll be prompted to sign a
-                payment.
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-base-300">
+            <button
+              className="btn btn-sm btn-outline btn-primary"
+              onClick={handleOpenWizard}
+              disabled={isLoading || isSigningPayment || microsubSelection.loading}
+            >
+              ➕ Create Data Room
+            </button>
+            {pendingDataRoomConfig && (
+              <div className="badge badge-info gap-2">
+                📁 {truncateText(pendingDataRoomConfig.description, 30)}
+                <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Alerts */}
+          {dataroomId && !microsubSelection.selectedMicrosub && (
+            <div className="alert alert-info mx-4 mt-2">
+              <div className="flex-1">
+                <div className="text-sm font-semibold mb-1">📁 Subscribing to Data Room</div>
+                <div className="text-xs opacity-80">
+                  Your first message will create a subscription to this data room. You&apos;ll be prompted to sign a
+                  payment.
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {microsubSelection.selectedMicrosub?.description && (
-          <div className="alert alert-info mb-4">
-            <div className="flex-1">
-              <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
-              <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
-              {microsubSelection.selectedMicrosub.system_prompt && (
-                <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
-              )}
-              {microsubSelection.selectedMicrosub.center_node_uuid && (
-                <div className="text-xs opacity-70 mt-1">
-                  🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+          {microsubSelection.selectedMicrosub?.description && (
+            <div className="alert alert-info mx-4 mt-2">
+              <div className="flex-1">
+                <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
+                <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
+                {microsubSelection.selectedMicrosub.system_prompt && (
+                  <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
+                )}
+                {microsubSelection.selectedMicrosub.center_node_uuid && (
+                  <div className="text-xs opacity-70 mt-1">
+                    🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {messages.length === 0 && (
+              <div className="text-center text-base-content/50 mt-20">
+                {dataroomDescription
+                  ? `Agent ready. Ask about ${truncateText(dataroomDescription, 60)}...`
+                  : "Start a conversation..."}
+              </div>
+            )}
+            {messages.map((msg, idx) => (
+              <ChatMessage key={idx} message={msg} className="mb-4" />
+            ))}
+            {isLoading && (
+              <div className="flex justify-center">
+                <span className="loading loading-dots loading-lg"></span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="alert alert-error mx-4 mb-2">
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="border-t border-base-300 p-4">
+            <div className="flex gap-2">
+              <textarea
+                className="textarea textarea-bordered flex-1"
+                placeholder="Type your message..."
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+              >
+                {isRetrying ? (
+                  "Retrying..."
+                ) : isLoading || isSigningPayment ? (
+                  <span className="loading loading-spinner"></span>
+                ) : (
+                  "Send"
+                )}
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Mobile Layout with Drawer */}
+      <div className="drawer lg:hidden">
+        <input
+          id="chat-sidebar-drawer"
+          type="checkbox"
+          className="drawer-toggle"
+          checked={isSidebarOpen}
+          onChange={toggleSidebar}
+        />
+        <div className="drawer-content flex flex-col h-[calc(100vh-4rem)]">
+          {/* Main Content for Mobile */}
+          <main className="flex-1 flex flex-col overflow-hidden bg-base-100">
+            {/* Header with Toggle Button */}
+            <div className="flex items-center justify-between p-4 border-b border-base-300">
+              <div className="flex items-center gap-2">
+                <button className="btn btn-ghost btn-sm" onClick={toggleSidebar}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="inline-block w-5 h-5 stroke-current"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <h2 className="font-bold text-lg">AI Agent Chat</h2>
+              </div>
+              <div className="flex gap-2 items-center">
+                <select
+                  className="select select-sm select-bordered"
+                  value={graphMode}
+                  onChange={e => setGraphMode(e.target.value as GraphMode)}
+                >
+                  <option value="adaptive">Adaptive</option>
+                  <option value="static">Static</option>
+                  <option value="dynamic">Dynamic</option>
+                  <option value="none">None</option>
+                </select>
+                <PaymentStatusBadge payment={payment || undefined} />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-base-300">
+              <button
+                className="btn btn-sm btn-outline btn-primary"
+                onClick={handleOpenWizard}
+                disabled={isLoading || isSigningPayment || microsubSelection.loading}
+              >
+                ➕ Create Data Room
+              </button>
+              {pendingDataRoomConfig && (
+                <div className="badge badge-info gap-2">
+                  📁 {truncateText(pendingDataRoomConfig.description, 30)}
+                  <button className="btn btn-xs btn-ghost btn-circle" onClick={() => setPendingDataRoomConfig(null)}>
+                    ✕
+                  </button>
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        <div className="bg-base-200 rounded-lg p-4 h-96 overflow-y-auto mb-4">
-          {messages.length === 0 && (
-            <div className="text-center text-base-content/50 mt-20">Start a conversation...</div>
-          )}
-          {messages.map((msg, idx) => (
-            <ChatMessage key={idx} message={msg} className="mb-4" />
-          ))}
-          {isLoading && (
-            <div className="flex justify-center">
-              <span className="loading loading-dots loading-lg"></span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {error && (
-          <div className="alert alert-error mb-4">
-            <span>{error}</span>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <textarea
-            className="textarea textarea-bordered flex-1"
-            placeholder="Type your message..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
-          >
-            {isRetrying ? (
-              "Retrying..."
-            ) : isLoading || isSigningPayment ? (
-              <span className="loading loading-spinner"></span>
-            ) : (
-              "Send"
+            {/* Alerts */}
+            {dataroomId && !microsubSelection.selectedMicrosub && (
+              <div className="alert alert-info mx-4 mt-2">
+                <div className="flex-1">
+                  <div className="text-sm font-semibold mb-1">📁 Subscribing to Data Room</div>
+                  <div className="text-xs opacity-80">
+                    Your first message will create a subscription to this data room. You&apos;ll be prompted to sign a
+                    payment.
+                  </div>
+                </div>
+              </div>
             )}
-          </button>
+
+            {microsubSelection.selectedMicrosub?.description && (
+              <div className="alert alert-info mx-4 mt-2">
+                <div className="flex-1">
+                  <div className="text-sm font-semibold mb-1">📁 Data Room Active</div>
+                  <div className="text-xs opacity-80">{microsubSelection.selectedMicrosub.description}</div>
+                  {microsubSelection.selectedMicrosub.system_prompt && (
+                    <div className="text-xs opacity-70 mt-1">🤖 Custom system prompt active</div>
+                  )}
+                  {microsubSelection.selectedMicrosub.center_node_uuid && (
+                    <div className="text-xs opacity-70 mt-1">
+                      🎯 Center node: {truncateAddress(microsubSelection.selectedMicrosub.center_node_uuid, 6)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {messages.length === 0 && (
+                <div className="text-center text-base-content/50 mt-20">
+                  {dataroomDescription
+                    ? `Agent ready. Ask about ${truncateText(dataroomDescription, 60)}...`
+                    : "Start a conversation..."}
+                </div>
+              )}
+              {messages.map((msg, idx) => (
+                <ChatMessage key={idx} message={msg} className="mb-4" />
+              ))}
+              {isLoading && (
+                <div className="flex justify-center">
+                  <span className="loading loading-dots loading-lg"></span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="alert alert-error mx-4 mb-2">
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Input Area */}
+            <div className="border-t border-base-300 p-4">
+              <div className="flex gap-2">
+                <textarea
+                  className="textarea textarea-bordered flex-1"
+                  placeholder="Type your message..."
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  disabled={isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading || isSigningPayment || microsubSelection.loading || isRetrying}
+                >
+                  {isRetrying ? (
+                    "Retrying..."
+                  ) : isLoading || isSigningPayment ? (
+                    <span className="loading loading-spinner"></span>
+                  ) : (
+                    "Send"
+                  )}
+                </button>
+              </div>
+            </div>
+          </main>
         </div>
 
-        <DataRoomWizard isOpen={isWizardOpen} onClose={handleCloseWizard} onComplete={handleWizardComplete} />
+        {/* Drawer Sidebar */}
+        <div className="drawer-side z-40">
+          <label htmlFor="chat-sidebar-drawer" className="drawer-overlay"></label>
+          <aside className="w-80 h-full bg-base-100">
+            <MicrosubSelector
+              availableMicrosubs={microsubSelection.availableMicrosubs}
+              selectedMicrosub={microsubSelection.selectedMicrosub}
+              loading={microsubSelection.loading}
+              error={microsubSelection.error}
+              onSelectMicrosub={microsubSelection.selectMicrosub}
+              availableAgents={agentSelection.availableAgents}
+              isSidebarMode={true}
+              onCloseSidebar={closeSidebar}
+            />
+          </aside>
+        </div>
       </div>
-    </div>
+
+      {/* DataRoomWizard Modal (shared by both layouts) */}
+      <DataRoomWizard isOpen={isWizardOpen} onClose={handleCloseWizard} onComplete={handleWizardComplete} />
+    </>
   );
 }

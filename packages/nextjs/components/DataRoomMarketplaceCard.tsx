@@ -2,8 +2,12 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePaymentHeader } from "@/hooks/usePaymentHeader";
+import { config } from "@/lib/config";
 import type { DataRoomInfo, DataRoomPreviewResponse } from "@/lib/types/delve-api";
 import { formatTimestamp, truncateAddress, truncateText } from "@/lib/utils";
+import { notification } from "@/utils/scaffold-eth/notification";
+import { useAccount } from "wagmi";
 
 interface DataRoomMarketplaceCardProps {
   dataroom: DataRoomInfo;
@@ -12,18 +16,99 @@ interface DataRoomMarketplaceCardProps {
 
 export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMarketplaceCardProps) {
   const router = useRouter();
+  const { isConnected } = useAccount();
+  const { buildAndSignPaymentHeader } = usePaymentHeader();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [preview, setPreview] = useState<DataRoomPreviewResponse | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSubscribeClick = () => {
-    if (dataroom.is_active) {
-      router.push(`/x402-chat?dataroom=${dataroom.id}`);
+  const handleSubscribe = async () => {
+    if (!isConnected) {
+      notification.error("Please connect your wallet to subscribe");
+      return;
+    }
+
+    if (isSubscribing) return; // Prevent double-click
+
+    setIsSubscribing(true);
+
+    try {
+      // Build and sign payment header
+      const paymentHeader = await buildAndSignPaymentHeader();
+
+      if (!paymentHeader) {
+        notification.error("Payment signing cancelled");
+        setIsSubscribing(false);
+        return;
+      }
+
+      // Build request body with dataroom_id, payment_header, and expected_amount
+      // Include agent_id only if available
+      const requestBody: any = {
+        dataroom_id: dataroom.id,
+        payment_header: paymentHeader,
+        expected_amount: config.payment.amount,
+      };
+
+      // Include agent_id only if dataroom has it
+      if (dataroom.agent_id) {
+        requestBody.agent_id = dataroom.agent_id;
+      }
+
+      // Create microsub
+      const response = await fetch("/api/microsubs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || "Failed to create subscription";
+
+        // Map status codes to user-friendly messages
+        if (response.status === 402) {
+          throw new Error("Payment verification failed. Please try again.");
+        } else if (response.status === 404) {
+          throw new Error("DataRoom not found or no longer available");
+        } else if (response.status === 409) {
+          throw new Error("This DataRoom is no longer active");
+        } else if (response.status === 503) {
+          throw new Error("Request timeout. Please try again.");
+        } else {
+          throw new Error(errorMessage);
+        }
+      }
+
+      const data = await response.json();
+      // Backend returns { microsub: {...}, payment: {...} }
+      const txHash = data.microsub?.tx_hash || data.tx_hash;
+
+      if (!txHash) {
+        throw new Error("No transaction hash returned from subscription");
+      }
+
+      // Store for auto-selection in chat page
+      localStorage.setItem("selectedMicrosubTxHash", txHash);
+
+      notification.success(`Subscribed successfully! Redirecting to chat...`);
+
+      // Navigate to dataroom-specific chat page
+      router.push(`/chat/${dataroom.id}`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to subscribe to data room";
+      notification.error(errorMessage);
+      console.error("Subscription error:", err);
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -211,8 +296,12 @@ export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMa
         {/* Card Actions */}
         <div className="card-actions justify-end">
           {dataroom.is_active ? (
-            <button className="btn btn-primary btn-sm" onClick={handleSubscribeClick}>
-              Subscribe
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSubscribe}
+              disabled={isSubscribing || !dataroom.is_active}
+            >
+              {isSubscribing ? <span className="loading loading-spinner"></span> : "Subscribe"}
             </button>
           ) : (
             <div className="tooltip" data-tip="This data room is no longer active">
