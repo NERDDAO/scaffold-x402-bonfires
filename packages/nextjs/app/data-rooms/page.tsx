@@ -317,7 +317,7 @@ export default function DataRoomsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {dataRooms.map(dataroom => (
-          <DataRoomMarketplaceCard key={dataroom.id} dataroom={dataroom} />
+          <DataRoomMarketplaceCard key={dataroom.id} dataroom={dataroom} onHyperBlogCreated={() => fetchDataRooms()} />
         ))}
       </div>
 

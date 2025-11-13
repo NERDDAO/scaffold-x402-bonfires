@@ -24,7 +24,7 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
   const [selectedBonfire, setSelectedBonfire] = useState<BonfireInfo | null>(null);
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [priceUsd, setPriceUsd] = useState<number>(5);
+  const [priceUsd, setPriceUsd] = useState<number>(0.01);
   const [queryLimit, setQueryLimit] = useState<number>(20);
   const [expirationDays, setExpirationDays] = useState<number>(30);
   const [previewEntities, setPreviewEntities] = useState<PreviewEntity[]>([]);
@@ -42,7 +42,7 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
       setSelectedBonfire(null);
       setDescription("");
       setSystemPrompt("");
-      setPriceUsd(5);
+      setPriceUsd(0.01);
       setQueryLimit(20);
       setExpirationDays(30);
       setPreviewEntities([]);

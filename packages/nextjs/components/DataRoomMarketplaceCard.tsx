@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { HyperBlogCreator } from "@/components/HyperBlogCreator";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import { config } from "@/lib/config";
 import type { DataRoomInfo, DataRoomPreviewResponse } from "@/lib/types/delve-api";
@@ -12,9 +13,14 @@ import { useAccount } from "wagmi";
 interface DataRoomMarketplaceCardProps {
   dataroom: DataRoomInfo;
   className?: string;
+  onHyperBlogCreated?: (dataroomId: string) => void;
 }
 
-export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMarketplaceCardProps) {
+export function DataRoomMarketplaceCard({
+  dataroom,
+  className = "",
+  onHyperBlogCreated,
+}: DataRoomMarketplaceCardProps) {
   const router = useRouter();
   const { isConnected } = useAccount();
   const { buildAndSignPaymentHeader } = usePaymentHeader();
@@ -24,11 +30,14 @@ export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMa
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isHyperBlogModalOpen, setIsHyperBlogModalOpen] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click navigation
+
     if (!isConnected) {
       notification.error("Please connect your wallet to subscribe");
       return;
@@ -112,6 +121,22 @@ export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMa
     }
   };
 
+  const handleOpenHyperBlogModal = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click navigation
+    setIsHyperBlogModalOpen(true);
+  };
+
+  const handleCloseHyperBlogModal = () => {
+    setIsHyperBlogModalOpen(false);
+  };
+
+  const handleHyperBlogSuccess = (hyperblogId: string) => {
+    notification.success(`Blog created successfully! ID: ${hyperblogId}`);
+    onHyperBlogCreated?.(dataroom.id);
+    setIsHyperBlogModalOpen(false);
+    console.log("HyperBlog created:", hyperblogId);
+  };
+
   // Fetch preview when expanded
   const fetchPreview = async () => {
     // Cancel any existing request
@@ -185,8 +210,15 @@ export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMa
   const truncatedDescription = truncateText(dataroom.description, 150);
   const shouldTruncate = dataroom.description.length > 150;
 
+  const handleCardClick = () => {
+    router.push(`/data-rooms/${dataroom.id}`);
+  };
+
   return (
-    <div className={`card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow ${className}`}>
+    <div
+      className={`card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer ${className}`}
+      onClick={handleCardClick}
+    >
       <div className="card-body">
         {/* Header Section */}
         <div className="flex items-start justify-between mb-2">
@@ -294,7 +326,29 @@ export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMa
         <div className="text-xs opacity-70 mb-4">Created {formatTimestamp(dataroom.created_at)}</div>
 
         {/* Card Actions */}
-        <div className="card-actions justify-end">
+        <div className="card-actions justify-end flex-wrap gap-2" onClick={e => e.stopPropagation()}>
+          {/* Create HyperBlog Button */}
+          {dataroom.is_active ? (
+            isConnected ? (
+              <button className="btn btn-secondary btn-sm" onClick={handleOpenHyperBlogModal}>
+                📝 Create Blog
+              </button>
+            ) : (
+              <div className="tooltip" data-tip="Connect wallet to create blog">
+                <button className="btn btn-secondary btn-sm" disabled>
+                  📝 Create Blog
+                </button>
+              </div>
+            )
+          ) : (
+            <div className="tooltip" data-tip="DataRoom is inactive">
+              <button className="btn btn-secondary btn-sm" disabled>
+                📝 Create Blog
+              </button>
+            </div>
+          )}
+
+          {/* Subscribe Button */}
           {dataroom.is_active ? (
             <button
               className="btn btn-primary btn-sm"
@@ -312,6 +366,14 @@ export function DataRoomMarketplaceCard({ dataroom, className = "" }: DataRoomMa
           )}
         </div>
       </div>
+      <HyperBlogCreator
+        dataroomId={dataroom.id}
+        dataroomDescription={dataroom.description}
+        dataroomPrice={dataroom.price_usd}
+        isOpen={isHyperBlogModalOpen}
+        onClose={handleCloseHyperBlogModal}
+        onSuccess={handleHyperBlogSuccess}
+      />
     </div>
   );
 }

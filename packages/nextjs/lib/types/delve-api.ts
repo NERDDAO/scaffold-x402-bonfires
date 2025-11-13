@@ -57,6 +57,53 @@ export interface LangGraphChatRequest {
   bonfire_id?: string;
 }
 
+/**
+ * HTN (Hierarchical Task Network) curriculum phase
+ */
+export interface HTNPhase {
+  id: string;
+  name: string;
+  order: number;
+  completed: boolean;
+}
+
+/**
+ * Current HTN phase with additional details
+ */
+export interface HTNCurrentPhase extends HTNPhase {
+  description: string;
+}
+
+/**
+ * HTN curriculum progress metrics
+ */
+export interface HTNProgress {
+  completed_phases: number;
+  total_phases: number;
+  progress_percentage: number;
+}
+
+/**
+ * Next HTN phase information
+ */
+export interface HTNNextPhase {
+  id: string;
+  name: string;
+}
+
+/**
+ * Complete HTN status data structure
+ */
+export interface HTNStatus {
+  enabled: boolean;
+  graph_id: string;
+  graph_hash: string;
+  current_phase: HTNCurrentPhase;
+  progress: HTNProgress;
+  next_phase: HTNNextPhase | null;
+  all_phases: HTNPhase[];
+}
+
 export interface LangGraphChatResponse {
   reply: string;
   graph_action: string;
@@ -67,6 +114,8 @@ export interface LangGraphChatResponse {
   graph_id?: string;
   center_node_uuid?: string;
   agent_id?: string;
+  htn_status?: HTNStatus;
+  context?: Record<string, any>;
 }
 
 export interface DelveRequest {
@@ -120,6 +169,7 @@ export interface PaymentMetadata {
   microsub_active?: boolean;
   queries_remaining?: number;
   expires_at?: string;
+  htn_generation_status?: "generating" | "ready" | "not_applicable" | "failed";
 }
 
 export interface PaidAgentChatRequest extends LangGraphChatRequest {
@@ -260,4 +310,84 @@ export interface DataRoomPreviewResponse {
   dataroom_id: string;
   description: string;
   num_results: number;
+}
+
+/**
+ * Blog section structure
+ */
+export interface BlogSection {
+  title: string;
+  content: string;
+  order: number;
+  htn_node_id: string;
+  word_count: number;
+  sources?: string[];
+}
+
+/**
+ * Blog content structure
+ */
+export interface BlogContent {
+  sections: BlogSection[];
+  metadata?: {
+    total_words: number;
+    generation_time_seconds: number;
+    model: string;
+    htn_graph_hash: string;
+    user_query: string;
+    dataroom_description: string;
+    sections_generated: number;
+    sections_failed?: number;
+    failed_node_ids?: string[];
+    generated_at: string;
+  };
+}
+
+/**
+ * HyperBlog information - AI-generated blog post from DataRoom knowledge graph
+ */
+export interface HyperBlogInfo {
+  id: string;
+  dataroom_id: string;
+  user_query: string;
+  generation_status: "generating" | "completed" | "failed";
+  author_wallet: string;
+  author_name?: string;
+  author_username?: string;
+  created_at: string;
+  is_public: boolean;
+  tx_hash: string | null;
+  word_count: number | null;
+  preview: string;
+  blog_content?: BlogContent;
+}
+
+/**
+ * Request to purchase and generate a HyperBlog
+ */
+export interface PurchaseHyperBlogRequest {
+  payment_header: string;
+  dataroom_id: string;
+  user_query: string;
+  is_public?: boolean;
+  expected_amount?: string;
+}
+
+/**
+ * Response from HyperBlog purchase endpoint
+ */
+export interface PurchaseHyperBlogResponse {
+  hyperblog: HyperBlogInfo;
+  payment: PaymentMetadata;
+}
+
+/**
+ * Paginated list of HyperBlogs for a DataRoom
+ */
+export interface HyperBlogListResponse {
+  hyperblogs: HyperBlogInfo[];
+  count: number;
+  dataroom_id: string;
+  limit: number;
+  offset: number;
 }

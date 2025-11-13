@@ -26,7 +26,7 @@ const delveApiUrl = assertEnvVar(
 const paymentAmount = assertEnvVar(
   process.env.NEXT_PUBLIC_PAYMENT_AMOUNT,
   "NEXT_PUBLIC_PAYMENT_AMOUNT",
-  "Payment amount in token units",
+  "Payment amount in USD decimal format (e.g., '0.01', '1.00')",
 );
 
 const chainIdStr = assertEnvVar(
