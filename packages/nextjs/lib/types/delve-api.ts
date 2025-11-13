@@ -120,6 +120,7 @@ export interface LangGraphChatResponse {
 
 export interface DelveRequest {
   query: string;
+  bonfire_id?: string;
   agent_config_id?: string;
   num_results?: number;
   center_node_uuid?: string;
@@ -237,6 +238,7 @@ export interface MicrosubListResponse {
 export interface PreviewRequest {
   query: string;
   num_results?: number;
+  bonfire_id?: string;
   agent_config_id?: string;
 }
 

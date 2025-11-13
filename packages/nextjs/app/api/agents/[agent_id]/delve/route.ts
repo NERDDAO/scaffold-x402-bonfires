@@ -4,6 +4,9 @@
  *
  * Delve backend handles all payment verification, settlement, and microsub management.
  * This route acts as a simple proxy.
+ *
+ * Note: bonfire_id can be provided in the request body for graph scoping.
+ * The backend will use bonfire_id to build group_ids for graph queries.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { config } from "@/lib/config";
@@ -40,7 +43,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Construct paid delve request
     const paidRequest: PaidDelveRequest = {
       ...body,
-      agent_config_id: agent_id, // Auto-populate from route param
+      bonfire_id: body.bonfire_id, // Use bonfire_id from body if provided
+      agent_config_id: agent_id, // Auto-populate from route param for backward compatibility
       payment_header: body.payment_header,
       expected_amount: body.expected_amount || config.payment.amount,
       query_limit: body.query_limit || config.payment.queryLimit,

@@ -14,11 +14,11 @@ import { useAccount } from "wagmi";
 import { notification } from "~~/utils/scaffold-eth/notification";
 
 interface PaidDelveInterfaceProps {
-  agentId: string;
+  bonfireId: string;
   className?: string;
 }
 
-export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfaceProps) {
+export function PaidDelveInterface({ bonfireId, className = "" }: PaidDelveInterfaceProps) {
   const { isConnected, address } = useAccount();
   const { buildAndSignPaymentHeader, isLoading: isSigningPayment } = usePaymentHeader();
   const microsubSelection = useMicrosubSelection({ walletAddress: address });
@@ -79,6 +79,7 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
       const requestBody: any = {
         query: searchQuery,
         num_results: resultsCount,
+        bonfire_id: bonfireId, // Always include bonfire_id for graph scoping
       };
 
       if (microsubSelection.selectedMicrosub) {
@@ -92,7 +93,6 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
         requestBody.description = pendingDataRoomConfig.description;
         requestBody.system_prompt = pendingDataRoomConfig.systemPrompt;
         requestBody.center_node_uuid = pendingDataRoomConfig.centerNodeUuid;
-        requestBody.bonfire_id = pendingDataRoomConfig.bonfireId;
       }
 
       // Override center_node_uuid if data room config exists (takes precedence)
@@ -100,7 +100,7 @@ export function PaidDelveInterface({ agentId, className = "" }: PaidDelveInterfa
         requestBody.center_node_uuid = pendingDataRoomConfig.centerNodeUuid;
       }
 
-      const response = await fetch(`/api/agents/${agentId}/delve`, {
+      const response = await fetch(`/api/agents/${bonfireId}/delve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

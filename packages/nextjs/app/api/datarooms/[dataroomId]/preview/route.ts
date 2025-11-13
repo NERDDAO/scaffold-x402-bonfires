@@ -2,17 +2,8 @@
  * DataRoom Preview API route
  * Proxies preview requests to delve backend using data room's description as query
  *
- * ARCHITECTURE NOTE:
- * Currently uses agent_config_id from a bonfire's registered agent to query the /delve endpoint.
- * This is a temporary workaround because:
- * - Knowledge graphs are scoped by agent_id in the current implementation
- * - The /delve endpoint requires agent_config_id, not bonfire_id
- *
- * MIGRATION PATH:
- * TODO: Replace with bonfire-scoped graph queries when backend supports:
- *   - Direct bonfire querying: POST /bonfires/{bonfire_id}/delve
- *   - Or bonfire_id parameter in /delve endpoint
- * This will eliminate the need to fetch bonfire agents and provide true multi-tenant bonfire graphs.
+ * Uses bonfire_id directly for graph scoping. The backend uses bonfire_id
+ * to build group_ids for graph queries.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { config } from "@/lib/config";
@@ -60,57 +51,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const dataRoom: DataRoomInfo = await dataRoomResponse.json();
 
-    // Fetch the bonfire to get an agent_id registered to it
-    // NOTE: This is a temporary workaround. We're using an agent registered to the bonfire
-    // because the /delve endpoint requires agent_config_id, not bonfire_id.
-    // TODO: Migrate to bonfire-scoped graph queries when backend supports direct bonfire querying
-    const bonfireAgentsUrl = `${config.delve.apiUrl}/bonfires/${dataRoom.bonfire_id}/agents`;
-    console.log("Fetching bonfire agents:", bonfireAgentsUrl);
-
-    const bonfireAgentsResponse = await fetch(bonfireAgentsUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(config.delve.timeout),
-    });
-
-    if (!bonfireAgentsResponse.ok) {
-      const error = await createErrorFromResponse(bonfireAgentsResponse);
-      console.error("Failed to fetch bonfire agents:", error);
-      return NextResponse.json(
-        {
-          error: error.message || "Failed to fetch bonfire agents",
-          details: error.details,
-        },
-        { status: error.statusCode },
-      );
-    }
-
-    const bonfireAgentsData = await bonfireAgentsResponse.json();
-
-    // Use the first active agent from the bonfire, or fallback to any agent
-    const activeAgent = bonfireAgentsData.agents?.find((a: any) => a.is_active);
-    const agentToUse = activeAgent || bonfireAgentsData.agents?.[0];
-
-    if (!agentToUse) {
-      return NextResponse.json(
-        {
-          error: "No agents registered to this bonfire",
-          details: `Bonfire ${dataRoom.bonfire_id} has no registered agents. Please register an agent to the bonfire first.`,
-        },
-        { status: 404 },
-      );
-    }
-
-    // Now fetch preview using the main /delve endpoint
-    // NOTE: Using agent_config_id from bonfire's registered agent
-    // TODO: Replace with bonfire-scoped query when backend supports: /bonfires/{bonfire_id}/delve
+    // Fetch preview using the /delve endpoint with bonfire_id
     const previewUrl = `${config.delve.apiUrl}/delve`;
 
     const previewPayload: any = {
       query: dataRoom.description,
-      agent_config_id: agentToUse.id, // Use bonfire's agent ID, not creator ID
+      bonfire_id: dataRoom.bonfire_id,
       num_results: 5, // Fetch 5 entities for preview
     };
 
@@ -119,11 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       previewPayload.center_node_uuid = dataRoom.center_node_uuid;
     }
 
-    console.log("Fetching preview entities:", previewUrl, {
-      ...previewPayload,
-      bonfire_id: dataRoom.bonfire_id,
-      using_agent: agentToUse.username || agentToUse.id,
-    });
+    console.log("Fetching preview entities:", previewUrl, previewPayload);
 
     const previewResponse = await fetch(previewUrl, {
       method: "POST",

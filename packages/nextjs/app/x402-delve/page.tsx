@@ -16,8 +16,8 @@ export default function DelvePage() {
     initialAgentId: urlAgentId,
   });
 
-  // Use selected agent or fallback to URL param or default
-  const agentId = agentSelection.selectedAgentId || urlAgentId || config.app.defaultAgentId || "default-agent";
+  // Use selected bonfire ID for graph scoping
+  const bonfireId = agentSelection.selectedBonfireId || urlBonfireId || config.app.defaultAgentId || "default-bonfire";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -39,8 +39,8 @@ export default function DelvePage() {
       </div>
 
       {/* Delve Interface */}
-      {agentSelection.selectedAgent ? (
-        <PaidDelveInterface agentId={agentId} />
+      {agentSelection.selectedBonfire ? (
+        <PaidDelveInterface bonfireId={bonfireId} />
       ) : (
         <div className="alert alert-info">
           <svg
@@ -56,7 +56,7 @@ export default function DelvePage() {
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             ></path>
           </svg>
-          <span>Please select a bonfire and agent to search the knowledge graph.</span>
+          <span>Please select a bonfire to search the knowledge graph.</span>
         </div>
       )}
     </div>

@@ -2,17 +2,8 @@
  * Bonfire preview API route
  * Proxies preview requests to delve's /delve endpoint for entity preview
  *
- * ARCHITECTURE NOTE:
- * Currently uses bonfire_id as agent_config_id when querying the /delve endpoint.
- * This is a temporary workaround because:
- * - The /delve endpoint requires agent_config_id parameter
- * - Bonfire IDs currently map to agent IDs in the backend
- *
- * MIGRATION PATH:
- * TODO: Replace with true bonfire-scoped graph queries when backend supports:
- *   - Direct bonfire querying: POST /bonfires/{bonfire_id}/delve
- *   - Or bonfire_id parameter in /delve endpoint
- * This will provide proper multi-tenant bonfire knowledge graphs independent of agent scope.
+ * Uses bonfire_id directly for graph scoping. The backend uses bonfire_id
+ * to build group_ids for graph queries, eliminating the need to fetch agents.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { config } from "@/lib/config";
@@ -46,11 +37,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Missing or empty required field: query" }, { status: 400 });
     }
 
-    // Construct delve request
-    // NOTE: Using bonfire_id as agent_config_id (temporary workaround)
-    // TODO: Migrate to bonfire-scoped queries: POST /bonfires/{bonfire_id}/delve
+    // Construct delve request using bonfire_id directly
     const delveRequest = {
-      agent_config_id: bonfire_id, // Currently bonfire_id maps to agent_id
+      bonfire_id: bonfire_id,
       query: body.query,
       num_results: body.num_results || 10,
     };
@@ -59,7 +48,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const delveUrl = `${config.delve.apiUrl}/delve`;
 
     console.log(`Forwarding preview request to: ${delveUrl}`, {
-      agent_config_id: bonfire_id, // bonfire_id used as agent_id
+      bonfire_id: bonfire_id,
       query: body.query,
       num_results: delveRequest.num_results,
     });
@@ -89,7 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const responseData: DelveResponse = await delveResponse.json();
 
     console.log("Preview fetch successful:", {
-      agent_config_id: bonfire_id, // bonfire_id used as agent_id
+      bonfire_id: bonfire_id,
       query: body.query,
       entity_count: responseData.metrics?.entity_count || 0,
       episode_count: responseData.metrics?.episode_count || 0,
