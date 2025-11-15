@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
-import { HyperBlogInfo, HyperBlogListResponse } from "@/lib/types/delve-api";
+import { AggregatedHyperBlogListResponse, HyperBlogInfo, HyperBlogListResponse } from "@/lib/types/delve-api";
 import { calculateReadingTime } from "@/lib/utils";
 import { notification } from "@/utils/scaffold-eth/notification";
 import {
@@ -21,7 +21,9 @@ import {
 } from "lucide-react";
 
 interface HyperBlogFeedProps {
-  dataroomId: string; // Required: DataRoom to fetch blogs from
+  dataroomId?: string; // Optional: DataRoom to fetch blogs from (omit for aggregated mode)
+  showFilters?: boolean; // Optional: Show/hide filter controls (default: false)
+  title?: string; // Optional: Section title (default: "HyperBlogs")
   autoRefreshInterval?: number; // Optional: Auto-refresh interval in ms (default 30000)
   initialLimit?: number; // Optional: Initial number of blogs to load (default 10)
   className?: string; // Optional: Additional CSS classes
@@ -30,7 +32,11 @@ interface HyperBlogFeedProps {
 /**
  * HyperBlogFeed Component
  *
- * Displays a paginated, auto-refreshing list of hyperblogs for a dataroom.
+ * Displays a paginated, auto-refreshing list of hyperblogs.
+ * Supports two modes:
+ * 1. DataRoom-specific mode (when dataroomId is provided): Shows blogs from single dataroom
+ * 2. Aggregated mode (when dataroomId is omitted): Shows blogs from all datarooms with filters
+ *
  * Features:
  * - Chat-style card layout using DaisyUI components
  * - Pagination with "Load More" button
@@ -38,17 +44,19 @@ interface HyperBlogFeedProps {
  * - Modal view for full blog content
  * - Status badges (generating/completed/failed)
  * - Error handling with retry functionality
+ * - Filter by dataroom and status (in aggregated mode)
+ * - DataRoom badges on cards (in aggregated mode)
  *
  * Future Enhancements:
- * - Full blog content display (requires backend endpoint or include_content param)
  * - Share/export functionality
- * - Filter by status (generating/completed/failed)
  * - Sort options (newest/oldest/most words)
  * - Search within blogs
  * - Author profile links (when wallet→agent mapping available)
  */
 export const HyperBlogFeed = ({
   dataroomId,
+  showFilters = false,
+  title = "HyperBlogs",
   autoRefreshInterval = 30000,
   initialLimit = 10,
   className = "",
@@ -81,6 +89,10 @@ export const HyperBlogFeed = ({
   // Copy Link State
   const [copiedSectionId, setCopiedSectionId] = useState<string | null>(null);
 
+  // Filter State (for aggregated mode)
+  const [selectedDataroomFilter, setSelectedDataroomFilter] = useState<string | null>(null);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
+
   // Refs
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -89,6 +101,7 @@ export const HyperBlogFeed = ({
   const tocRef = useRef<HTMLDivElement | null>(null);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
   const clickedCardRef = useRef<HTMLElement | null>(null);
+  const isInitialMountRef = useRef<boolean>(true);
 
   // Keep blogsRef in sync with blogs state
   useEffect(() => {
@@ -113,8 +126,25 @@ export const HyperBlogFeed = ({
         }
         setError(null);
 
+        // Build API URL based on mode
+        let apiUrl: string;
+        if (dataroomId) {
+          // DataRoom-specific mode
+          apiUrl = `/api/datarooms/${dataroomId}/hyperblogs?limit=${limit}&offset=${offset}`;
+        } else {
+          // Aggregated mode
+          apiUrl = `/api/hyperblogs?limit=${limit}&offset=${offset}`;
+          // Add filters for aggregated mode
+          if (selectedDataroomFilter) {
+            apiUrl += `&dataroom_id=${selectedDataroomFilter}`;
+          }
+          if (selectedStatusFilter) {
+            apiUrl += `&status=${selectedStatusFilter}`;
+          }
+        }
+
         // Fetch from API
-        const response = await fetch(`/api/datarooms/${dataroomId}/hyperblogs?limit=${limit}&offset=${offset}`, {
+        const response = await fetch(apiUrl, {
           signal: abortControllerRef.current.signal,
         });
 
@@ -123,7 +153,7 @@ export const HyperBlogFeed = ({
           throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const data: HyperBlogListResponse = await response.json();
+        const data: HyperBlogListResponse | AggregatedHyperBlogListResponse = await response.json();
 
         // Handle success
         if (append) {
@@ -148,7 +178,7 @@ export const HyperBlogFeed = ({
         // Parse error message
         let errorMessage = "Unable to load blogs. Please check your connection.";
         if (err.message.includes("404")) {
-          errorMessage = "DataRoom not found";
+          errorMessage = dataroomId ? "DataRoom not found" : "Endpoint not found";
         } else if (err.message.includes("500")) {
           errorMessage = "Server error. Please try again later.";
         } else if (err.message.includes("timeout")) {
@@ -165,7 +195,7 @@ export const HyperBlogFeed = ({
         abortControllerRef.current = null;
       }
     },
-    [dataroomId],
+    [dataroomId, selectedDataroomFilter, selectedStatusFilter],
   );
 
   /**
@@ -180,6 +210,26 @@ export const HyperBlogFeed = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Filter change effect - triggers immediate refetch when filters change
+   */
+  useEffect(() => {
+    // Skip on initial mount - the initial load effect handles that
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    // Clear any existing error state
+    setError(null);
+
+    // Abort any in-flight request
+    abortControllerRef.current?.abort();
+
+    // Trigger immediate refetch with reset pagination
+    fetchBlogs(0, initialLimit, false);
+  }, [selectedDataroomFilter, selectedStatusFilter, dataroomId, fetchBlogs, initialLimit]);
 
   /**
    * Auto-refresh effect
@@ -418,6 +468,22 @@ export const HyperBlogFeed = ({
   const isEmpty = useMemo(() => !isLoading && blogs.length === 0 && !error, [isLoading, blogs.length, error]);
 
   /**
+   * Get unique dataroom IDs from loaded blogs (for filter dropdown)
+   */
+  const uniqueDataroomIds = useMemo(() => {
+    const ids = new Set(blogs.map(b => b.dataroom_id));
+    return Array.from(ids);
+  }, [blogs]);
+
+  /**
+   * Handler: Clear all filters
+   */
+  const handleClearFilters = useCallback(() => {
+    setSelectedDataroomFilter(null);
+    setSelectedStatusFilter(null);
+  }, []);
+
+  /**
    * Utility: Format timestamp
    */
   const formatTimestamp = (timestamp: string | number): string => {
@@ -490,10 +556,14 @@ export const HyperBlogFeed = ({
     <div className={`space-y-4 ${className}`} aria-label="HyperBlog Feed">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold flex items-center gap-2">
-          Recent Blogs
-          {totalCount > 0 && <span className="badge badge-neutral">{totalCount}</span>}
-        </h3>
+        <div>
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            {title || "Recent Blogs"}
+            {totalCount > 0 && <span className="badge badge-neutral">{totalCount}</span>}
+          </h3>
+          {!dataroomId && <p className="text-sm opacity-70 mt-1">Latest from all DataRooms</p>}
+          {dataroomId && <p className="text-sm opacity-70 mt-1">From this DataRoom</p>}
+        </div>
         {!isLoading && blogs.length > 0 && (
           <div className="text-xs opacity-70 flex items-center gap-1">
             {autoRefreshInterval > 0 && (
@@ -505,6 +575,58 @@ export const HyperBlogFeed = ({
           </div>
         )}
       </div>
+
+      {/* Filters Section (only show if showFilters is true and not in dataroom-specific mode) */}
+      {showFilters && !dataroomId && (
+        <div className="bg-base-200 p-4 rounded-lg mb-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="text-sm font-semibold opacity-70 flex-shrink-0">Filter by:</div>
+
+            {/* DataRoom Filter */}
+            <div className="flex-1">
+              <select
+                className="select select-sm select-bordered w-full"
+                value={selectedDataroomFilter || ""}
+                onChange={e => setSelectedDataroomFilter(e.target.value || null)}
+                aria-label="Filter by DataRoom"
+              >
+                <option value="">All DataRooms</option>
+                {uniqueDataroomIds.map(id => (
+                  <option key={id} value={id}>
+                    {id.substring(0, 8)}...
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex-1">
+              <select
+                className="select select-sm select-bordered w-full"
+                value={selectedStatusFilter || ""}
+                onChange={e => setSelectedStatusFilter(e.target.value || null)}
+                aria-label="Filter by Status"
+              >
+                <option value="">All Statuses</option>
+                <option value="generating">Generating</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(selectedDataroomFilter || selectedStatusFilter) && (
+              <button
+                className="btn btn-sm btn-ghost flex-shrink-0"
+                onClick={handleClearFilters}
+                aria-label="Clear all filters"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Loading State (Initial) */}
       {isLoading && blogs.length === 0 && (
@@ -530,7 +652,11 @@ export const HyperBlogFeed = ({
       {isEmpty && (
         <div className="text-center py-12 opacity-70">
           <div className="text-6xl mb-4">📝</div>
-          <p className="text-lg">No blogs yet. Be the first to create one!</p>
+          {dataroomId ? (
+            <p className="text-lg">No blogs yet for this DataRoom. Create the first one!</p>
+          ) : (
+            <p className="text-lg">No public blogs available yet. Visit a DataRoom to create one!</p>
+          )}
         </div>
       )}
 
@@ -564,9 +690,24 @@ export const HyperBlogFeed = ({
 
                 {/* Metadata Row */}
                 <div className="flex flex-wrap items-center gap-2 text-xs opacity-70 mt-3">
+                  {/* DataRoom badge (only in aggregated mode) */}
+                  {!dataroomId && (
+                    <>
+                      <span className="badge badge-outline badge-xs">
+                        DataRoom: {blog.dataroom_id.substring(0, 8)}...
+                      </span>
+                      <span>•</span>
+                    </>
+                  )}
                   <span>by {truncateAddress(blog.author_wallet, 6)}</span>
                   <span>•</span>
                   <span>{formatTimestamp(blog.created_at)}</span>
+                  {blog.blog_length && (
+                    <>
+                      <span>•</span>
+                      <span className="badge badge-xs badge-outline capitalize">{blog.blog_length}</span>
+                    </>
+                  )}
                   {blog.generation_status === "completed" && blog.word_count && (
                     <>
                       <span>•</span>

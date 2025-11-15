@@ -360,6 +360,7 @@ export interface HyperBlogInfo {
   is_public: boolean;
   tx_hash: string | null;
   word_count: number | null;
+  blog_length: "short" | "medium" | "long";
   preview: string;
   blog_content?: BlogContent;
 }
@@ -372,6 +373,7 @@ export interface PurchaseHyperBlogRequest {
   dataroom_id: string;
   user_query: string;
   is_public?: boolean;
+  blog_length?: "short" | "medium" | "long";
   expected_amount?: string;
 }
 
@@ -390,6 +392,18 @@ export interface HyperBlogListResponse {
   hyperblogs: HyperBlogInfo[];
   count: number;
   dataroom_id: string;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Aggregated list of HyperBlogs across all DataRooms
+ * Unlike HyperBlogListResponse, this does not have a single dataroom_id field
+ * since blogs come from multiple datarooms
+ */
+export interface AggregatedHyperBlogListResponse {
+  hyperblogs: HyperBlogInfo[];
+  count: number;
   limit: number;
   offset: number;
 }

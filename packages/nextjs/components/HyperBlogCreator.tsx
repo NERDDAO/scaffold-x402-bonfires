@@ -28,6 +28,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
   // Form state
   const [userQuery, setUserQuery] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [blogLength, setBlogLength] = useState<"short" | "medium" | "long">("medium");
 
   // Loading/Error state
   const [isLoading, setIsLoading] = useState(false);
@@ -52,6 +53,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
     if (!isOpen) {
       setUserQuery("");
       setIsPublic(true);
+      setBlogLength("medium");
       setIsLoading(false);
       setError(null);
       setHyperblogId(null);
@@ -197,6 +199,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
         dataroom_id: dataroomId,
         user_query: userQuery.trim(),
         is_public: isPublic,
+        blog_length: blogLength,
       };
 
       // Call purchase API
@@ -352,6 +355,45 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
                 />
                 <label className="label">
                   <span className="label-text-alt">Describe what you want the blog to cover (3-500 characters)</span>
+                </label>
+              </div>
+
+              {/* Blog Length Selector */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-semibold">Blog Length</span>
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className={`btn btn-sm flex-1 ${blogLength === "short" ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setBlogLength("short")}
+                    disabled={isLoading || generationStatus === "generating"}
+                  >
+                    Short
+                    <span className="text-xs opacity-70">(2 min)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm flex-1 ${blogLength === "medium" ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setBlogLength("medium")}
+                    disabled={isLoading || generationStatus === "generating"}
+                  >
+                    Medium
+                    <span className="text-xs opacity-70">(5 min)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm flex-1 ${blogLength === "long" ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setBlogLength("long")}
+                    disabled={isLoading || generationStatus === "generating"}
+                  >
+                    Long
+                    <span className="text-xs opacity-70">(10 min)</span>
+                  </button>
+                </div>
+                <label className="label">
+                  <span className="label-text-alt">Choose your preferred reading length</span>
                 </label>
               </div>
 

@@ -6,8 +6,9 @@ import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Scaffold-ETH 2 App",
-  description: "Built with 🏗 Scaffold-ETH 2",
+  title: "HyperBlogs - AI-Generated Knowledge Blogs",
+  description:
+    "Create AI-generated blog posts from knowledge graphs with blockchain-verified payments. Powered by x402 protocol and Delve.",
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
