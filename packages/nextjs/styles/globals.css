@@ -97,6 +97,18 @@
     margin-bottom: 0.5rem;
     line-height: 1;
   }
+
+  /* Smooth scroll behavior for anchor navigation */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Respect user's motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
 }
 
 :root,
@@ -118,4 +130,121 @@
 
 .link:hover {
   opacity: 80%;
+}
+
+/* Custom prose styling for markdown content */
+.prose {
+  --prose-body: var(--color-base-content);
+  --prose-headings: var(--color-base-content);
+  --prose-links: var(--color-primary);
+  --prose-bold: var(--color-base-content);
+  --prose-code: var(--color-accent);
+  --prose-pre-bg: var(--color-base-300);
+  --prose-pre-border: var(--color-base-content);
+  --prose-quotes: var(--color-base-content);
+  --prose-quote-border: var(--color-primary);
+  --prose-captions: var(--color-base-content);
+  --prose-th-borders: var(--color-base-content);
+  --prose-td-borders: var(--color-base-content);
+}
+
+.prose blockquote {
+  border-left-color: var(--color-primary);
+  background-color: var(--color-base-200);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.prose thead {
+  background-color: var(--color-base-200);
+  border-bottom: 2px solid var(--color-base-content, currentColor);
+}
+
+.prose th,
+.prose td {
+  padding: 0.75rem;
+  border: 1px solid var(--color-base-content, currentColor);
+}
+
+.prose tbody tr:nth-child(even) {
+  background-color: var(--color-base-200);
+}
+
+/* Dark theme prose overrides - using DaisyUI data-theme attribute */
+[data-theme="dark"] .prose {
+  --prose-body: var(--color-base-content);
+  --prose-headings: var(--color-base-content);
+  --prose-links: var(--color-primary);
+  --prose-bold: var(--color-base-content);
+  --prose-code: var(--color-accent);
+  --prose-pre-bg: var(--color-base-300);
+  --prose-pre-border: var(--color-base-content);
+  --prose-quotes: var(--color-base-content);
+  --prose-quote-border: var(--color-primary);
+}
+
+/* Modal-specific scroll customizations */
+.modal-box {
+  scroll-behavior: smooth;
+}
+
+.modal-box::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-box::-webkit-scrollbar-track {
+  background: var(--color-base-200);
+}
+
+.modal-box::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 4px;
+}
+
+.modal-box::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Enhanced typography for blog content */
+.blog-section {
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+}
+
+.blog-section h3 {
+  line-height: 1.3;
+  margin-bottom: 1.5rem;
+}
+
+.blog-section p {
+  margin-bottom: 1rem;
+}
+
+/* TOC-specific styles */
+.toc-item {
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.toc-item.active {
+  border-left-color: var(--color-primary);
+  background-color: var(--color-base-200);
+  font-weight: 600;
+}
+
+/* Scroll offset for sticky header */
+.scroll-mt-20 {
+  scroll-margin-top: 5rem;
+}
+
+/* Mobile modal spacing */
+@media (max-width: 640px) {
+  .modal-box {
+    padding: 0;
+  }
 }

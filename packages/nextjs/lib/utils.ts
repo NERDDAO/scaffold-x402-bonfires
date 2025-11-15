@@ -168,3 +168,20 @@ export function truncateText(text: string, maxLength: number = 50): string {
   if (!text || text.length <= maxLength) return text;
   return text.slice(0, maxLength) + "...";
 }
+
+/**
+ * Calculate reading time estimate from word count
+ */
+export function calculateReadingTime(wordCount: number): string {
+  if (!wordCount || wordCount <= 0) return "";
+
+  const minutes = Math.ceil(wordCount / 200);
+
+  if (minutes < 1) {
+    return "< 1 min read";
+  } else if (minutes === 1) {
+    return "1 min read";
+  } else {
+    return `${minutes} min read`;
+  }
+}
