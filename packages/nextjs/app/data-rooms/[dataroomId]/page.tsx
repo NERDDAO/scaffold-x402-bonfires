@@ -203,11 +203,11 @@ export default function DataRoomDetailPage() {
       </div>
 
       {/* HyperBlog Creator Modal */}
-      {/* TODO: TEMPORARILY DISABLED - dataroomPrice prop removed */}
       {dataroom && (
         <HyperBlogCreator
           dataroomId={dataroomId}
           dataroomDescription={dataroom.description}
+          dataroomPrice={dataroom.price_usd}
           isOpen={isCreatorOpen}
           onClose={handleCloseCreator}
           onSuccess={handleCreatorSuccess}

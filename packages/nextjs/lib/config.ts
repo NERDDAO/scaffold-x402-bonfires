@@ -58,6 +58,15 @@ if (!isValidAddress(recipientAddress)) {
   throw new Error(`Invalid NEXT_PUBLIC_PAYMENT_RECIPIENT_ADDRESS: "${recipientAddress}"`);
 }
 
+const intermediaryAddress = assertEnvVar(
+  process.env.NEXT_PUBLIC_ONCHAINFI_INTERMEDIARY_ADDRESS,
+  "NEXT_PUBLIC_ONCHAINFI_INTERMEDIARY_ADDRESS",
+  "OnchainFi intermediary address for /v1/pay endpoint",
+);
+if (!isValidAddress(intermediaryAddress)) {
+  throw new Error(`Invalid NEXT_PUBLIC_ONCHAINFI_INTERMEDIARY_ADDRESS: "${intermediaryAddress}"`);
+}
+
 const network = assertEnvVar(
   process.env.NEXT_PUBLIC_PAYMENT_NETWORK,
   "NEXT_PUBLIC_PAYMENT_NETWORK",
@@ -73,6 +82,15 @@ const isProduction = process.env.NODE_ENV === "production";
 
 export const config = {
   delve: { apiUrl: delveApiUrl, timeout: 30000 },
-  payment: { amount: paymentAmount, tokenAddress, recipientAddress, chainId, network, queryLimit, expirationDays },
+  payment: {
+    amount: paymentAmount,
+    tokenAddress,
+    recipientAddress,
+    intermediaryAddress,
+    chainId,
+    network,
+    queryLimit,
+    expirationDays,
+  },
   app: { isDevelopment, isProduction, defaultAgentId: defaultAgentId || undefined },
 } as const;

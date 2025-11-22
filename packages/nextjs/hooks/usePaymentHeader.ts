@@ -58,9 +58,11 @@ export function usePaymentHeader(): UsePaymentHeaderReturn {
         }
 
         const paymentAmount = amount || config.payment.amount;
+        // Sign to OnchainFi intermediary address for /v1/pay endpoint
+        // Backend will specify final recipient in "to" field
         const typedData = buildPaymentTypedData({
           tokenAddress: config.payment.tokenAddress,
-          recipientAddress: config.payment.recipientAddress,
+          recipientAddress: config.payment.intermediaryAddress, // Sign to intermediary
           amount: paymentAmount,
           network: config.payment.network,
           chainId: config.payment.chainId,

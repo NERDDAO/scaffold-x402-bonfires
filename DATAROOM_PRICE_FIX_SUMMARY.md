@@ -146,3 +146,4 @@ The fix ensures that:
 
 This resolves the issue where creating a 5 USDC DataRoom and trying to subscribe would send "5000000" instead of "5.00" to the backend, causing payment verification to fail.
 
+
