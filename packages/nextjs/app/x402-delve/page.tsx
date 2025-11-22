@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AgentSelector } from "@/components/AgentSelector";
 import { PaidDelveInterface } from "@/components/PaidDelveInterface";
 import { useAgentSelection } from "@/hooks/useAgentSelection";
 import { config } from "@/lib/config";
 
-export default function DelvePage() {
+function DelvePageContent() {
   const searchParams = useSearchParams();
   const urlAgentId = searchParams.get("agent");
   const urlBonfireId = searchParams.get("bonfire");
@@ -60,5 +61,22 @@ export default function DelvePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DelvePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">Knowledge Graph Search</h1>
+            <p className="text-base-content/70">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <DelvePageContent />
+    </Suspense>
   );
 }
