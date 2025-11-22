@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AgentSelector } from "@/components/AgentSelector";
 import { PaidChatInterface } from "@/components/PaidChatInterface";
@@ -8,7 +8,7 @@ import { useAgentSelection } from "@/hooks/useAgentSelection";
 import { config } from "@/lib/config";
 import type { DataRoomInfo } from "@/lib/types/delve-api";
 
-export default function ChatPage() {
+function ChatPageContent() {
   const searchParams = useSearchParams();
   const urlAgentId = searchParams.get("agent");
   const urlBonfireId = searchParams.get("bonfire");
@@ -84,5 +84,22 @@ export default function ChatPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">Payment-Gated AI Chat</h1>
+            <p className="text-base-content/70">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <ChatPageContent />
+    </Suspense>
   );
 }
