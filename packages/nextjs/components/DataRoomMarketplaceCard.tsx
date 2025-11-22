@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HyperBlogCreator } from "@/components/HyperBlogCreator";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
-import { config } from "@/lib/config";
 import type { DataRoomInfo, DataRoomPreviewResponse } from "@/lib/types/delve-api";
 import { formatTimestamp, truncateAddress, truncateText } from "@/lib/utils";
 import { notification } from "@/utils/scaffold-eth/notification";
@@ -48,8 +47,11 @@ export function DataRoomMarketplaceCard({
     setIsSubscribing(true);
 
     try {
-      // Build and sign payment header
-      const paymentHeader = await buildAndSignPaymentHeader();
+      // Use the actual dataroom price in decimal USD format
+      const priceDecimal = dataroom.price_usd.toFixed(2);
+
+      // Build and sign payment header with the correct amount
+      const paymentHeader = await buildAndSignPaymentHeader(priceDecimal);
 
       if (!paymentHeader) {
         notification.error("Payment signing cancelled");
@@ -58,11 +60,10 @@ export function DataRoomMarketplaceCard({
       }
 
       // Build request body with dataroom_id, payment_header, and expected_amount
-      // Include agent_id only if available
       const requestBody: any = {
         dataroom_id: dataroom.id,
         payment_header: paymentHeader,
-        expected_amount: config.payment.amount,
+        expected_amount: priceDecimal,
       };
 
       // Include agent_id only if dataroom has it

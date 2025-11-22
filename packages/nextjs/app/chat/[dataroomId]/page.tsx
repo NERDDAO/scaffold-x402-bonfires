@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { PaidChatInterface } from "@/components/PaidChatInterface";
 import { useAgentSelection } from "@/hooks/useAgentSelection";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
-import { config } from "@/lib/config";
 import type { DataRoomInfo, MicrosubInfo } from "@/lib/types/delve-api";
 import { formatTimestamp, truncateAddress, truncateText } from "@/lib/utils";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -205,8 +204,11 @@ export default function DataRoomSubscriptionPage() {
         throw new Error("This DataRoom is no longer active");
       }
 
-      // Build and sign payment header
-      const paymentHeader = await buildAndSignPaymentHeader();
+      // Use the actual dataroom price in decimal USD format
+      const priceDecimal = dataRoom.price_usd.toFixed(2);
+
+      // Build and sign payment header with the correct amount
+      const paymentHeader = await buildAndSignPaymentHeader(priceDecimal);
 
       // User cancelled signing
       if (!paymentHeader) {
@@ -219,7 +221,7 @@ export default function DataRoomSubscriptionPage() {
       const requestBody: any = {
         payment_header: paymentHeader,
         dataroom_id: params.dataroomId,
-        expected_amount: config.payment.amount,
+        expected_amount: priceDecimal,
       };
 
       // Include agent_id if available from dataRoom
