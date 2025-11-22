@@ -1,17 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePaymentHeader } from "@/hooks/usePaymentHeader";
+// TODO: TEMPORARILY DISABLED - Re-enable when payments are restored
+// import { usePaymentHeader } from "@/hooks/usePaymentHeader";
 import { HyperBlogInfo, PurchaseHyperBlogRequest, PurchaseHyperBlogResponse } from "@/lib/types/delve-api";
 import { formatErrorMessage } from "@/lib/utils";
 import { notification } from "@/utils/scaffold-eth/notification";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+
+// TODO: TEMPORARILY DISABLED - Re-enable when payments are restored
+// import { ConnectButton } from "@rainbow-me/rainbowkit";
+// import { useAccount } from "wagmi";
 
 interface HyperBlogCreatorProps {
   dataroomId: string;
   dataroomDescription?: string;
-  dataroomPrice?: number;
+  // TODO: TEMPORARILY DISABLED - Re-enable when payments are restored
+  // dataroomPrice?: number;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (hyperblogId: string) => void;
@@ -20,7 +24,7 @@ interface HyperBlogCreatorProps {
 export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
   dataroomId,
   dataroomDescription,
-  dataroomPrice,
+  // dataroomPrice, // TODO: TEMPORARILY DISABLED
   isOpen,
   onClose,
   onSuccess,
@@ -44,9 +48,10 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // TODO: TEMPORARILY DISABLED - Re-enable when payments are restored
   // Hooks
-  const { isConnected, address } = useAccount();
-  const { buildAndSignPaymentHeader, isLoading: isSigningPayment } = usePaymentHeader();
+  // const { isConnected, address } = useAccount();
+  // const { buildAndSignPaymentHeader, isLoading: isSigningPayment } = usePaymentHeader();
 
   // Effect: Reset state on modal close
   useEffect(() => {
@@ -78,10 +83,10 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
 
   // Effect: Focus textarea when modal opens
   useEffect(() => {
-    if (isOpen && textareaRef.current && isConnected) {
+    if (isOpen && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [isOpen, isConnected]);
+  }, [isOpen]);
 
   // Validation helper
   const isQueryValid = userQuery.trim().length >= 3 && userQuery.length <= 500;
@@ -152,12 +157,13 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
+    // TODO: TEMPORARILY DISABLED - Re-enable wallet requirement when payments are enabled
     // Pre-validation
-    if (!isConnected || !address) {
-      setError("Please connect your wallet to create a blog");
-      notification.error("Please connect your wallet");
-      return;
-    }
+    // if (!isConnected || !address) {
+    //   setError("Please connect your wallet to create a blog");
+    //   notification.error("Please connect your wallet");
+    //   return;
+    // }
 
     if (userQuery.trim().length < 3 || userQuery.length > 500) {
       return;
@@ -167,35 +173,39 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
     setError(null);
 
     try {
-      // Calculate payment amount
-      let priceUsd: number;
+      // TODO: TEMPORARILY DISABLED - Re-enable payment for HyperBlogs later
+      // Payment signature is bypassed to allow free HyperBlog creation
 
-      if (dataroomPrice !== undefined) {
-        priceUsd = dataroomPrice;
-      } else {
-        // Fetch dataroom details to get price
-        const dataroomResponse = await fetch(`/api/datarooms/${dataroomId}`);
-        if (!dataroomResponse.ok) {
-          throw new Error("Failed to fetch dataroom details");
-        }
-        const dataroomData = await dataroomResponse.json();
-        priceUsd = dataroomData.price_usd;
-      }
+      // COMMENTED OUT: Payment calculation and signing
+      // // Calculate payment amount
+      // let priceUsd: number;
+      //
+      // if (dataroomPrice !== undefined) {
+      //   priceUsd = dataroomPrice;
+      // } else {
+      //   // Fetch dataroom details to get price
+      //   const dataroomResponse = await fetch(`/api/datarooms/${dataroomId}`);
+      //   if (!dataroomResponse.ok) {
+      //     throw new Error("Failed to fetch dataroom details");
+      //   }
+      //   const dataroomData = await dataroomResponse.json();
+      //   priceUsd = dataroomData.price_usd;
+      // }
+      //
+      // // Set amount as decimal string (buildAndSignPaymentHeader handles conversion)
+      // const amount = priceUsd.toFixed(2);
+      //
+      // // Build and sign payment
+      // notification.info("Signing payment...");
+      // const paymentHeader = await buildAndSignPaymentHeader(amount);
+      //
+      // if (!paymentHeader) {
+      //   throw new Error("Payment signing cancelled or failed");
+      // }
 
-      // Set amount as decimal string (buildAndSignPaymentHeader handles conversion)
-      const amount = priceUsd.toFixed(2);
-
-      // Build and sign payment
-      notification.info("Signing payment...");
-      const paymentHeader = await buildAndSignPaymentHeader(amount);
-
-      if (!paymentHeader) {
-        throw new Error("Payment signing cancelled or failed");
-      }
-
-      // Build request body
+      // Build request body with placeholder payment header
       const requestBody: PurchaseHyperBlogRequest = {
-        payment_header: paymentHeader,
+        payment_header: "FREE_HYPERBLOG", // Placeholder since payment is disabled
         dataroom_id: dataroomId,
         user_query: userQuery.trim(),
         is_public: isPublic,
@@ -226,7 +236,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       setHyperblogId(createdHyperblogId);
       setGenerationStatus(status);
 
-      notification.success("Blog purchase successful! Generating content...");
+      notification.success("Blog created successfully! Generating content...");
 
       // Start polling if generating
       if (status === "generating") {
@@ -247,17 +257,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       notification.error(errorMessage);
       setIsLoading(false);
     }
-  }, [
-    isConnected,
-    address,
-    userQuery,
-    dataroomId,
-    dataroomPrice,
-    isPublic,
-    buildAndSignPaymentHeader,
-    startPolling,
-    onSuccess,
-  ]);
+  }, [userQuery, dataroomId, isPublic, blogLength, startPolling, onSuccess]);
 
   // Close handler
   const handleClose = useCallback(() => {
@@ -272,7 +272,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         handleClose();
-      } else if (e.key === "Enter" && !e.shiftKey && isQueryValid && !isLoading && !isSigningPayment) {
+      } else if (e.key === "Enter" && !e.shiftKey && isQueryValid && !isLoading) {
         e.preventDefault();
         handleSubmit();
       }
@@ -280,7 +280,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isQueryValid, isLoading, isSigningPayment, handleClose, handleSubmit]);
+  }, [isOpen, isQueryValid, isLoading, handleClose, handleSubmit]);
 
   // Early return if not open
   if (!isOpen) return null;
@@ -316,201 +316,194 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
                       ? dataroomDescription.substring(0, 100) + "..."
                       : dataroomDescription}
                   </div>
-                  {dataroomPrice !== undefined && (
+                  {/* TODO: TEMPORARILY DISABLED - Show price when payments are re-enabled */}
+                  <div className="mt-2 text-sm font-bold badge badge-success">FREE (Payment Temporarily Disabled)</div>
+                  {/* {dataroomPrice !== undefined && (
                     <div className="mt-2 text-sm font-bold">${dataroomPrice.toFixed(2)} USD</div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>
           </div>
         )}
 
+        {/* TODO: TEMPORARILY DISABLED - Wallet connection requirement removed for free HyperBlogs */}
         {/* Wallet Connection Check */}
-        {!isConnected ? (
+        {/* {!isConnected ? (
           <div className="flex flex-col items-center justify-center py-8 gap-4">
             <p className="text-center text-lg opacity-80">Please connect your wallet to create a blog</p>
             <ConnectButton />
           </div>
         ) : (
-          <>
-            {/* Form */}
-            <div className="space-y-4">
-              {/* User Query Input */}
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold">
-                    Blog Topic <span className={`text-xs ${getCharCountColor()}`}>({userQuery.length}/500)</span>
-                  </span>
-                </label>
-                <textarea
-                  ref={textareaRef}
-                  className={`textarea textarea-bordered h-24 sm:h-32 w-full ${
-                    !isQueryValid && userQuery.length > 0 ? "textarea-error" : ""
-                  }`}
-                  placeholder="e.g., 'How to play white in chess openings' or 'Introduction to quantum computing'"
-                  value={userQuery}
-                  onChange={e => setUserQuery(e.target.value)}
-                  maxLength={500}
-                  disabled={isLoading || generationStatus === "generating"}
-                />
-                <label className="label">
-                  <span className="label-text-alt">Describe what you want the blog to cover (3-500 characters)</span>
-                </label>
-              </div>
+          <> */}
+        {/* Form */}
+        <div className="space-y-4">
+          {/* User Query Input */}
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-semibold">
+                Blog Topic <span className={`text-xs ${getCharCountColor()}`}>({userQuery.length}/500)</span>
+              </span>
+            </label>
+            <textarea
+              ref={textareaRef}
+              className={`textarea textarea-bordered h-24 sm:h-32 w-full ${
+                !isQueryValid && userQuery.length > 0 ? "textarea-error" : ""
+              }`}
+              placeholder="e.g., 'How to play white in chess openings' or 'Introduction to quantum computing'"
+              value={userQuery}
+              onChange={e => setUserQuery(e.target.value)}
+              maxLength={500}
+              disabled={isLoading || generationStatus === "generating"}
+            />
+            <label className="label">
+              <span className="label-text-alt">Describe what you want the blog to cover (3-500 characters)</span>
+            </label>
+          </div>
 
-              {/* Blog Length Selector */}
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold">Blog Length</span>
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className={`btn btn-sm flex-1 ${blogLength === "short" ? "btn-primary" : "btn-outline"}`}
-                    onClick={() => setBlogLength("short")}
-                    disabled={isLoading || generationStatus === "generating"}
-                  >
-                    Short
-                    <span className="text-xs opacity-70">(2 min)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm flex-1 ${blogLength === "medium" ? "btn-primary" : "btn-outline"}`}
-                    onClick={() => setBlogLength("medium")}
-                    disabled={isLoading || generationStatus === "generating"}
-                  >
-                    Medium
-                    <span className="text-xs opacity-70">(5 min)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm flex-1 ${blogLength === "long" ? "btn-primary" : "btn-outline"}`}
-                    onClick={() => setBlogLength("long")}
-                    disabled={isLoading || generationStatus === "generating"}
-                  >
-                    Long
-                    <span className="text-xs opacity-70">(10 min)</span>
-                  </button>
+          {/* Blog Length Selector */}
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-semibold">Blog Length</span>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={`btn btn-sm flex-1 ${blogLength === "short" ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setBlogLength("short")}
+                disabled={isLoading || generationStatus === "generating"}
+              >
+                Short
+                <span className="text-xs opacity-70">(2 min)</span>
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm flex-1 ${blogLength === "medium" ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setBlogLength("medium")}
+                disabled={isLoading || generationStatus === "generating"}
+              >
+                Medium
+                <span className="text-xs opacity-70">(5 min)</span>
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm flex-1 ${blogLength === "long" ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setBlogLength("long")}
+                disabled={isLoading || generationStatus === "generating"}
+              >
+                Long
+                <span className="text-xs opacity-70">(10 min)</span>
+              </button>
+            </div>
+            <label className="label">
+              <span className="label-text-alt">Choose your preferred reading length</span>
+            </label>
+          </div>
+
+          {/* Visibility Toggle */}
+          <div className="form-control">
+            <label className="label cursor-pointer justify-start gap-3">
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={isPublic}
+                onChange={e => setIsPublic(e.target.checked)}
+                disabled={isLoading || generationStatus === "generating"}
+              />
+              <span className="label-text">Make blog public (visible in dataroom feed)</span>
+            </label>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="alert alert-error">
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Generation Status Display */}
+          {hyperblogId && (
+            <div className="card bg-base-200">
+              <div className="card-body p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="font-semibold">Status:</span>
+                  {generationStatus === "generating" && (
+                    <span className="badge badge-warning gap-2">
+                      <span className="loading loading-spinner loading-xs"></span>
+                      Generating...
+                    </span>
+                  )}
+                  {generationStatus === "completed" && <span className="badge badge-success">✓ Completed</span>}
+                  {generationStatus === "failed" && <span className="badge badge-error">✗ Failed</span>}
                 </div>
-                <label className="label">
-                  <span className="label-text-alt">Choose your preferred reading length</span>
-                </label>
-              </div>
 
-              {/* Visibility Toggle */}
-              <div className="form-control">
-                <label className="label cursor-pointer justify-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary"
-                    checked={isPublic}
-                    onChange={e => setIsPublic(e.target.checked)}
-                    disabled={isLoading || generationStatus === "generating"}
-                  />
-                  <span className="label-text">Make blog public (visible in dataroom feed)</span>
-                </label>
-              </div>
-
-              {/* Error Display */}
-              {error && (
-                <div className="alert alert-error">
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Generation Status Display */}
-              {hyperblogId && (
-                <div className="card bg-base-200">
-                  <div className="card-body p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="font-semibold">Status:</span>
-                      {generationStatus === "generating" && (
-                        <span className="badge badge-warning gap-2">
-                          <span className="loading loading-spinner loading-xs"></span>
-                          Generating...
-                        </span>
-                      )}
-                      {generationStatus === "completed" && <span className="badge badge-success">✓ Completed</span>}
-                      {generationStatus === "failed" && <span className="badge badge-error">✗ Failed</span>}
-                    </div>
-
-                    {generationStatus === "completed" && wordCount && (
-                      <div className="text-sm space-y-2">
-                        <p>
-                          <span className="font-semibold">Word Count:</span> {wordCount.toLocaleString()} words
-                        </p>
-                        {preview && (
-                          <div>
-                            <p className="font-semibold mb-1">Preview:</p>
-                            <p className="text-xs opacity-80 italic">{preview}</p>
-                          </div>
-                        )}
+                {generationStatus === "completed" && wordCount && (
+                  <div className="text-sm space-y-2">
+                    <p>
+                      <span className="font-semibold">Word Count:</span> {wordCount.toLocaleString()} words
+                    </p>
+                    {preview && (
+                      <div>
+                        <p className="font-semibold mb-1">Preview:</p>
+                        <p className="text-xs opacity-80 italic">{preview}</p>
                       </div>
                     )}
-
-                    {generationStatus === "generating" && (
-                      <p className="text-sm opacity-70">
-                        Your blog is being generated. This may take 30-60 seconds. You can close this and check back
-                        later.
-                      </p>
-                    )}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Modal Actions */}
-            <div className="modal-action">
-              {!hyperblogId ? (
-                <>
-                  <button className="btn" onClick={handleClose} disabled={isLoading}>
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleSubmit}
-                    disabled={!isQueryValid || isLoading || isSigningPayment}
-                  >
-                    {isSigningPayment ? (
-                      <>
-                        <span className="loading loading-spinner loading-sm"></span>
-                        Signing Payment...
-                      </>
-                    ) : isLoading ? (
-                      <>
-                        <span className="loading loading-spinner loading-sm"></span>
-                        Creating...
-                      </>
-                    ) : (
-                      "Create Blog"
-                    )}
-                  </button>
-                </>
-              ) : generationStatus === "completed" ? (
-                <>
-                  <button className="btn" onClick={handleClose}>
-                    Close
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => {
-                      if (onSuccess && hyperblogId) {
-                        onSuccess(hyperblogId);
-                      }
-                      handleClose();
-                    }}
-                  >
-                    View Blog
-                  </button>
-                </>
-              ) : (
-                <button className="btn" onClick={handleClose}>
-                  Close
-                </button>
-              )}
+                {generationStatus === "generating" && (
+                  <p className="text-sm opacity-70">
+                    Your blog is being generated. This may take 30-60 seconds. You can close this and check back later.
+                  </p>
+                )}
+              </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Modal Actions */}
+        <div className="modal-action">
+          {!hyperblogId ? (
+            <>
+              <button className="btn" onClick={handleClose} disabled={isLoading}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={!isQueryValid || isLoading}>
+                {isLoading ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Creating...
+                  </>
+                ) : (
+                  "Create FREE Blog"
+                )}
+              </button>
+            </>
+          ) : generationStatus === "completed" ? (
+            <>
+              <button className="btn" onClick={handleClose}>
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  if (onSuccess && hyperblogId) {
+                    onSuccess(hyperblogId);
+                  }
+                  handleClose();
+                }}
+              >
+                View Blog
+              </button>
+            </>
+          ) : (
+            <button className="btn" onClick={handleClose}>
+              Close
+            </button>
+          )}
+        </div>
+        {/* </>
+        )} */}
       </div>
     </div>
   );

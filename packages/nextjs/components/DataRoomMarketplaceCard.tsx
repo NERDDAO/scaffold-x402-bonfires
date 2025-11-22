@@ -367,10 +367,10 @@ export function DataRoomMarketplaceCard({
           )}
         </div>
       </div>
+      {/* TODO: TEMPORARILY DISABLED - dataroomPrice prop removed */}
       <HyperBlogCreator
         dataroomId={dataroom.id}
         dataroomDescription={dataroom.description}
-        dataroomPrice={dataroom.price_usd}
         isOpen={isHyperBlogModalOpen}
         onClose={handleCloseHyperBlogModal}
         onSuccess={handleHyperBlogSuccess}
