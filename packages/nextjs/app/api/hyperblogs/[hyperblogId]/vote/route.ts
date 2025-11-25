@@ -15,6 +15,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { vote_type, user_wallet } = body;
 
+    console.log(`Vote API received: hyperblogId=${hyperblogId}, vote_type=${vote_type}, user_wallet=${user_wallet}`);
+
     if (vote_type !== "upvote" && vote_type !== "downvote") {
       return NextResponse.json({ error: "Invalid vote_type. Must be 'upvote' or 'downvote'" }, { status: 400 });
     }
@@ -36,6 +38,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     if (!delveResponse.ok) {
+      console.error(
+        `Delve backend vote failed: status=${delveResponse.status}, statusText=${delveResponse.statusText}`,
+      );
       const error = await createErrorFromResponse(delveResponse);
       return NextResponse.json(
         {

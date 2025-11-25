@@ -80,7 +80,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ comment_text: sanitizedComment, user_wallet }),
+      body: JSON.stringify({ content: sanitizedComment, user_wallet }),
       signal: AbortSignal.timeout(config.delve.timeout),
     });
 
