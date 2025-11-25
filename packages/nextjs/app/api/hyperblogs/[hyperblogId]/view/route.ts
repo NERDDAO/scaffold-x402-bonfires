@@ -16,20 +16,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Body is optional for view tracking, ignore JSON parse errors on empty body
     }
 
-    const { user_address, session_id } = body as any;
+    const { user_wallet, session_id } = body as any;
 
     if (!hyperblogId) {
       return NextResponse.json({ error: "Invalid hyperblogId" }, { status: 400 });
     }
 
-    const delveUrl = `${config.delve.apiUrl}/hyperblogs/${hyperblogId}/view`;
+    const delveUrl = `${config.delve.apiUrl}/datarooms/hyperblogs/${hyperblogId}/view`;
 
     const delveResponse = await fetch(delveUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ user_address, session_id }),
+      body: JSON.stringify({ user_wallet, session_id }),
       signal: AbortSignal.timeout(config.delve.timeout),
     });
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     console.log("View incremented:", {
       hyperblog_id: hyperblogId,
-      user_address,
+      user_wallet,
     });
 
     return NextResponse.json(updatedHyperBlog, { status: 200 });
