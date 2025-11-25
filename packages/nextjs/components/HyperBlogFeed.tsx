@@ -1,24 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MarkdownRenderer } from "./MarkdownRenderer";
+import Link from "next/link";
+import { HyperBlogDetail } from "./HyperBlogDetail";
 import { AggregatedHyperBlogListResponse, HyperBlogInfo, HyperBlogListResponse } from "@/lib/types/delve-api";
 import { calculateReadingTime } from "@/lib/utils";
 import { notification } from "@/utils/scaffold-eth/notification";
-import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowRight,
-  Calendar,
-  Check,
-  Clock,
-  ExternalLink,
-  FileText,
-  Link,
-  Menu,
-  User,
-  X,
-} from "lucide-react";
+import { AlertCircle, Clock, Eye, Maximize2, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
 
 interface HyperBlogFeedProps {
   dataroomId?: string; // Optional: DataRoom to fetch blogs from (omit for aggregated mode)
@@ -36,22 +24,6 @@ interface HyperBlogFeedProps {
  * Supports two modes:
  * 1. DataRoom-specific mode (when dataroomId is provided): Shows blogs from single dataroom
  * 2. Aggregated mode (when dataroomId is omitted): Shows blogs from all datarooms with filters
- *
- * Features:
- * - Chat-style card layout using DaisyUI components
- * - Pagination with "Load More" button
- * - Auto-refresh every 30 seconds (configurable)
- * - Modal view for full blog content
- * - Status badges (generating/completed/failed)
- * - Error handling with retry functionality
- * - Filter by dataroom and status (in aggregated mode)
- * - DataRoom badges on cards (in aggregated mode)
- *
- * Future Enhancements:
- * - Share/export functionality
- * - Sort options (newest/oldest/most words)
- * - Search within blogs
- * - Author profile links (when wallet→agent mapping available)
  */
 export const HyperBlogFeed = ({
   dataroomId,
@@ -74,20 +46,7 @@ export const HyperBlogFeed = ({
 
   // Modal State
   const [selectedBlog, setSelectedBlog] = useState<HyperBlogInfo | null>(null);
-  const [fullBlogContent, setFullBlogContent] = useState<HyperBlogInfo | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isLoadingFullContent, setIsLoadingFullContent] = useState<boolean>(false);
-  const [modalError, setModalError] = useState<string | null>(null);
-
-  // TOC State
-  const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-
-  // Keyboard Navigation State
-  const [currentSectionIndex, setCurrentSectionIndex] = useState<number>(0);
-
-  // Copy Link State
-  const [copiedSectionId, setCopiedSectionId] = useState<string | null>(null);
 
   // Filter State (for aggregated mode)
   const [selectedDataroomFilter, setSelectedDataroomFilter] = useState<string | null>(null);
@@ -98,9 +57,6 @@ export const HyperBlogFeed = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const blogsRef = useRef<HyperBlogInfo[]>([]);
-  const tocRef = useRef<HTMLDivElement | null>(null);
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
-  const clickedCardRef = useRef<HTMLElement | null>(null);
   const isInitialMountRef = useRef<boolean>(true);
 
   // Keep blogsRef in sync with blogs state
@@ -255,41 +211,6 @@ export const HyperBlogFeed = ({
   }, [dataroomId, autoRefreshInterval, currentLimit, fetchBlogs]);
 
   /**
-   * Scroll tracking effect for TOC active state
-   */
-  useEffect(() => {
-    if (!isModalOpen || !fullBlogContent?.blog_content?.sections) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      { threshold: 0.5, rootMargin: "-100px 0px -50% 0px" },
-    );
-
-    // Observe all section elements
-    const sections = fullBlogContent.blog_content.sections.map(section => {
-      const element = document.getElementById(section.htn_node_id);
-      if (element) {
-        observer.observe(element);
-      }
-      return element;
-    });
-
-    return () => {
-      sections.forEach(element => {
-        if (element) observer.unobserve(element);
-      });
-    };
-  }, [isModalOpen, fullBlogContent]);
-
-  /**
    * Handler: Load next page
    */
   const handleLoadMore = useCallback(() => {
@@ -319,146 +240,24 @@ export const HyperBlogFeed = ({
    */
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
-    setIsTocOpen(false);
-    setActiveSection(null);
-    setModalError(null);
-    setCurrentSectionIndex(0);
-    setCopiedSectionId(null);
-
-    // Restore focus to clicked card
-    if (clickedCardRef.current) {
-      clickedCardRef.current.focus();
-      clickedCardRef.current = null;
-    }
-
-    // Clear state after animation
     setTimeout(() => {
       setSelectedBlog(null);
-      setFullBlogContent(null);
     }, 300);
   }, []);
 
   /**
-   * Smooth scroll utility function
+   * Handler: Open blog in modal
+   * Note: Primary interaction is now via Link, this is fallback
    */
-  const handleScrollToSection = useCallback((sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-      setIsTocOpen(false); // Close TOC on mobile after navigation
-    }
-  }, []);
-
-  /**
-   * Handler: Copy section link to clipboard
-   */
-  const handleCopyLink = useCallback((sectionId: string, sectionTitle: string, blogId: string) => {
-    const url = `${window.location.origin}/hyperblogs/${blogId}#${sectionId}`;
-
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        setCopiedSectionId(sectionId);
-        notification.success(`Link to "${sectionTitle}" copied to clipboard`);
-
-        // Reset copied state after 2 seconds
-        setTimeout(() => {
-          setCopiedSectionId(null);
-        }, 2000);
-      })
-      .catch(err => {
-        console.error("Failed to copy link:", err);
-        notification.error("Failed to copy link");
-      });
-  }, []);
-
-  /**
-   * Handler: Keyboard navigation for modal
-   */
-  const handleKeyboardNavigation = useCallback(
-    (event: KeyboardEvent) => {
-      if (!isModalOpen) return;
-
-      // Handle Escape key
-      if (event.key === "Escape") {
-        handleCloseModal();
-        return;
-      }
-
-      // Handle arrow keys for section navigation
-      if (!fullBlogContent?.blog_content?.sections) return;
-
-      const sections = fullBlogContent.blog_content.sections.sort((a, b) => a.order - b.order);
-      const maxIndex = sections.length - 1;
-
-      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-        event.preventDefault();
-        const nextIndex = Math.min(currentSectionIndex + 1, maxIndex);
-        setCurrentSectionIndex(nextIndex);
-        handleScrollToSection(sections[nextIndex].htn_node_id);
-      } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-        event.preventDefault();
-        const prevIndex = Math.max(currentSectionIndex - 1, 0);
-        setCurrentSectionIndex(prevIndex);
-        handleScrollToSection(sections[prevIndex].htn_node_id);
-      }
-    },
-    [isModalOpen, fullBlogContent, currentSectionIndex, handleCloseModal, handleScrollToSection],
-  );
-
-  /**
-   * Keyboard navigation effect
-   */
-  useEffect(() => {
-    if (isModalOpen) {
-      window.addEventListener("keydown", handleKeyboardNavigation);
-      return () => {
-        window.removeEventListener("keydown", handleKeyboardNavigation);
-      };
-    }
-  }, [isModalOpen, handleKeyboardNavigation]);
-
-  /**
-   * Handler: Open blog in modal and fetch full content
-   */
-  const handleOpenBlog = useCallback(async (blog: HyperBlogInfo, cardElement?: HTMLElement) => {
-    // Store reference to clicked card for focus restoration
-    if (cardElement) {
-      clickedCardRef.current = cardElement;
+  const handleOpenBlog = useCallback((blog: HyperBlogInfo, e?: React.MouseEvent) => {
+    // Prevent navigation and propagation when opening modal
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
 
     setSelectedBlog(blog);
     setIsModalOpen(true);
-    setIsLoadingFullContent(true);
-    setFullBlogContent(null);
-    setModalError(null);
-    setCurrentSectionIndex(0);
-
-    // Focus modal after opening
-    setTimeout(() => {
-      modalContentRef.current?.focus();
-    }, 100);
-
-    try {
-      // Fetch full blog content from individual endpoint
-      const response = await fetch(`/api/hyperblogs/${blog.id}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load full content: ${response.statusText}`);
-      }
-
-      const fullBlog: HyperBlogInfo = await response.json();
-      setFullBlogContent(fullBlog);
-      setModalError(null);
-    } catch (err: any) {
-      console.error("Error loading full blog content:", err);
-      const errorMessage = "Failed to load full blog content. Please try again.";
-      setModalError(errorMessage);
-      // Still show the modal with preview data
-      setFullBlogContent(blog);
-    } finally {
-      setIsLoadingFullContent(false);
-    }
   }, []);
 
   /**
@@ -544,11 +343,40 @@ export const HyperBlogFeed = ({
   };
 
   /**
-   * Utility: Truncate preview text to max length
+   * Utility: Smart truncate preview text at sentence boundaries
    */
-  const truncatePreview = (preview: string | null, maxLength: number = 200): string => {
+  const truncatePreviewSmart = (preview: string | null, maxLength: number = 280): string => {
     if (!preview) return "No preview available";
     if (preview.length <= maxLength) return preview;
+
+    // Look for sentence boundary within the last 20% of the allowed length
+    const truncationZoneStart = Math.floor(maxLength * 0.8);
+    const truncationZone = preview.slice(truncationZoneStart, maxLength);
+
+    // Find the last sentence terminator in the zone
+    const regex = /[.!?](?=\s|$)/g;
+    let lastSentenceEnd = -1;
+    let match;
+    while ((match = regex.exec(truncationZone)) !== null) {
+      lastSentenceEnd = match.index;
+    }
+
+    if (lastSentenceEnd !== -1) {
+      // Found a sentence boundary
+      const truncated = preview.slice(0, truncationZoneStart + lastSentenceEnd + 1);
+      if (truncated.length < preview.length) {
+        return truncated + " ...";
+      }
+      return truncated;
+    }
+
+    // Fallback to word boundary
+    const lastSpace = preview.lastIndexOf(" ", maxLength);
+    if (lastSpace > truncationZoneStart) {
+      return preview.slice(0, lastSpace) + "...";
+    }
+
+    // Hard fallback
     return preview.slice(0, maxLength) + "...";
   };
 
@@ -664,73 +492,105 @@ export const HyperBlogFeed = ({
       {blogs.length > 0 && (
         <div className="space-y-4">
           {blogs.map(blog => (
-            <div
+            <Link
               key={blog.id}
-              className="chat chat-start cursor-pointer hover:bg-base-200 hover:scale-[1.01] hover:shadow-lg transition-all duration-200 rounded-lg border border-transparent hover:border-primary/20"
-              onClick={e => handleOpenBlog(blog, e.currentTarget)}
-              role="button"
-              tabIndex={0}
-              aria-label={`Blog post: ${blog.user_query}`}
-              onKeyDown={e => {
-                if (e.key === "Enter") handleOpenBlog(blog, e.currentTarget);
-              }}
+              href={`/hyperblogs/${blog.id}`}
+              passHref
+              className="block no-underline group animate-slide-up"
             >
-              <div className="chat-bubble chat-bubble-secondary max-w-full sm:max-w-2xl relative focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                {/* Status Badge */}
-                <div className="absolute top-2 right-2">{getStatusBadge(blog.generation_status)}</div>
+              <div
+                className="card-minimal group-hover:translate-y-[-2px]"
+                role="button"
+                tabIndex={0}
+                aria-label={`Blog post: ${blog.user_query}`}
+              >
+                <div className="relative w-full">
+                  {/* Status Badge */}
+                  <div className="absolute top-0 right-0">{getStatusBadge(blog.generation_status)}</div>
 
-                {/* Title */}
-                <h4 className="font-semibold text-base mb-2 pr-24 line-clamp-2">{blog.user_query}</h4>
+                  {/* Title */}
+                  <h4 className="text-xl sm:text-2xl font-bold font-serif mb-3 pr-24 line-clamp-2 text-base-content group-hover:text-primary transition-colors">
+                    {blog.user_query}
+                  </h4>
 
-                {/* Preview Text with Gradient Fade */}
-                <div className="relative">
-                  <p className="text-sm opacity-80 mb-2 line-clamp-4">{truncatePreview(blog.preview, 300)}</p>
-                  <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-b from-transparent to-secondary pointer-events-none"></div>
-                </div>
-
-                {/* Metadata Row */}
-                <div className="flex flex-wrap items-center gap-2 text-xs opacity-70 mt-3">
-                  {/* DataRoom badge (only in aggregated mode) */}
-                  {!dataroomId && (
-                    <>
-                      <span className="badge badge-outline badge-xs">
-                        DataRoom: {blog.dataroom_id.substring(0, 8)}...
-                      </span>
-                      <span>•</span>
-                    </>
-                  )}
-                  <span>by {truncateAddress(blog.author_wallet, 6)}</span>
-                  <span>•</span>
-                  <span>{formatTimestamp(blog.created_at)}</span>
-                  {blog.blog_length && (
-                    <>
-                      <span>•</span>
-                      <span className="badge badge-xs badge-outline capitalize">{blog.blog_length}</span>
-                    </>
-                  )}
-                  {blog.generation_status === "completed" && blog.word_count && (
-                    <>
-                      <span>•</span>
-                      <span>{blog.word_count} words</span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {calculateReadingTime(blog.word_count)}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* Action Link with Arrow */}
-                {blog.generation_status === "completed" && (
-                  <div className="mt-2">
-                    <span className="text-xs text-primary hover:underline hover:translate-x-1 transition-transform duration-200 inline-flex items-center gap-1">
-                      Read Full <ArrowRight className="w-3 h-3" />
-                    </span>
+                  {/* Preview Text */}
+                  <div className="relative mb-6">
+                    <p className="text-base text-base-content/80 leading-relaxed line-clamp-4">
+                      {truncatePreviewSmart(blog.preview, 280)}
+                    </p>
                   </div>
-                )}
+
+                  {/* Metadata Row */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-base-content/60">
+                    {/* DataRoom badge (only in aggregated mode) */}
+                    {!dataroomId && (
+                      <>
+                        <span className="badge badge-outline badge-sm">
+                          DataRoom: {blog.dataroom_id.substring(0, 8)}...
+                        </span>
+                        <span>•</span>
+                      </>
+                    )}
+                    <span className="font-medium text-base-content/80">
+                      by {truncateAddress(blog.author_wallet, 6)}
+                    </span>
+                    <span>•</span>
+                    <span>{formatTimestamp(blog.created_at)}</span>
+                    {blog.blog_length && (
+                      <>
+                        <span>•</span>
+                        <span className="capitalize">{blog.blog_length}</span>
+                      </>
+                    )}
+                    {blog.generation_status === "completed" && blog.word_count && (
+                      <>
+                        <span>•</span>
+                        <span>{blog.word_count} words</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {calculateReadingTime(blog.word_count)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Interaction Row Preview (Non-interactive in card, just visual) */}
+                  {blog.generation_status === "completed" && (
+                    <div className="flex items-center gap-6 mt-6 pt-4 border-t border-base-content/5 text-base-content/60">
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm hover:text-primary transition-colors">
+                        <ThumbsUp className="w-4 h-4" />
+                        <span>{blog.upvotes || 0}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm hover:text-primary transition-colors">
+                        <ThumbsDown className="w-4 h-4" />
+                        <span>{blog.downvotes || 0}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm hover:text-primary transition-colors">
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{blog.comment_count || 0}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm px-2 ml-auto">
+                        <Eye className="w-4 h-4 opacity-70" />
+                        <span>{blog.view_count || 0}</span>
+                      </div>
+
+                      <button
+                        className="btn btn-ghost btn-xs gap-1 z-10 relative hover:bg-base-200 ml-2"
+                        onClick={e => handleOpenBlog(blog, e)}
+                        aria-label="Quick View"
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">Quick View</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -759,364 +619,17 @@ export const HyperBlogFeed = ({
         <div className="text-center text-sm opacity-70 py-4">All blogs loaded ({totalCount} total)</div>
       )}
 
-      {/* Modal Component (Full Blog View) */}
-      <div
-        className={`modal ${isModalOpen ? "modal-open" : ""}`}
-        onClick={handleCloseModal}
-        role="dialog"
-        aria-modal="true"
-        aria-busy={isLoadingFullContent}
-      >
-        <div
-          ref={modalContentRef}
-          className="modal-box max-w-full sm:max-w-5xl lg:max-w-6xl max-h-[90vh] flex flex-col p-0"
-          onClick={e => e.stopPropagation()}
-          tabIndex={-1}
-        >
-          {selectedBlog && (
-            <>
-              {/* Sticky Header */}
-              <div className="sticky top-0 z-10 bg-base-100 border-b border-base-300 px-4 sm:px-6 py-3 sm:py-4 flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  {/* Mobile TOC Toggle */}
-                  <button
-                    className="btn btn-sm btn-ghost lg:hidden mt-1"
-                    onClick={() => setIsTocOpen(!isTocOpen)}
-                    aria-label="Toggle table of contents"
-                  >
-                    {isTocOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                  </button>
-
-                  {/* Title and Status */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-xl sm:text-2xl mb-2 break-words">{selectedBlog.user_query}</h3>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(selectedBlog.generation_status)}
-                      {selectedBlog.generation_status === "completed" && selectedBlog.word_count && (
-                        <span
-                          className="badge badge-ghost gap-1"
-                          aria-label={`Reading time: ${calculateReadingTime(selectedBlog.word_count)}`}
-                        >
-                          <Clock className="w-3 h-3" />
-                          {calculateReadingTime(selectedBlog.word_count)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Close Button */}
-                <button
-                  className="btn btn-sm sm:btn-md btn-circle btn-ghost flex-shrink-0 focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                  onClick={handleCloseModal}
-                  aria-label="Close modal"
-                  aria-keyshortcuts="Escape"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Main Content Area with TOC Sidebar */}
-              <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
-                {/* Table of Contents Sidebar */}
-                {fullBlogContent?.blog_content?.sections && (
-                  <>
-                    {/* Desktop TOC */}
-                    <div
-                      ref={tocRef}
-                      className="hidden lg:block lg:w-64 lg:border-r lg:border-base-300 lg:overflow-y-auto"
-                    >
-                      <div className="p-4">
-                        <h4 className="text-sm font-semibold uppercase tracking-wide opacity-70 mb-3">
-                          Table of Contents
-                        </h4>
-                        <nav className="space-y-1">
-                          {fullBlogContent.blog_content.sections
-                            .sort((a, b) => a.order - b.order)
-                            .map((section, index) => (
-                              <button
-                                key={section.htn_node_id}
-                                onClick={() => handleScrollToSection(section.htn_node_id)}
-                                onKeyDown={e => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    handleScrollToSection(section.htn_node_id);
-                                  }
-                                }}
-                                className={`toc-item w-full text-left text-sm py-2 px-4 rounded transition-all min-h-[44px] flex items-center gap-2 focus:ring-2 focus:ring-primary focus:outline-none ${
-                                  activeSection === section.htn_node_id
-                                    ? "toc-item active bg-base-200 border-l-4 border-primary font-semibold"
-                                    : "border-l-4 border-transparent hover:bg-base-200"
-                                }`}
-                                tabIndex={0}
-                              >
-                                <span className="text-xs opacity-60 flex-shrink-0">{index + 1}.</span>
-                                <span className="flex-1 line-clamp-2">{section.title}</span>
-                              </button>
-                            ))}
-                        </nav>
-                      </div>
-                    </div>
-
-                    {/* Mobile TOC Overlay */}
-                    {isTocOpen && (
-                      <div className="absolute inset-0 bg-base-100 z-20 p-6 overflow-y-auto lg:hidden">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-semibold">Table of Contents</h4>
-                          <button
-                            className="btn btn-sm btn-circle btn-ghost"
-                            onClick={() => setIsTocOpen(false)}
-                            aria-label="Close table of contents"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                        <nav className="space-y-2">
-                          {fullBlogContent.blog_content.sections
-                            .sort((a, b) => a.order - b.order)
-                            .map((section, index) => (
-                              <button
-                                key={section.htn_node_id}
-                                onClick={() => handleScrollToSection(section.htn_node_id)}
-                                className={`toc-item w-full text-left text-sm py-3 px-4 rounded transition-all min-h-[44px] flex items-center gap-2 ${
-                                  activeSection === section.htn_node_id
-                                    ? "toc-item active bg-base-200 border-l-4 border-primary font-semibold"
-                                    : "border-l-4 border-transparent hover:bg-base-200"
-                                }`}
-                              >
-                                <span className="text-xs opacity-60 flex-shrink-0">{index + 1}.</span>
-                                <span className="flex-1">{section.title}</span>
-                              </button>
-                            ))}
-                        </nav>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Content Scrolling Area */}
-                <div
-                  id="blog-content-scroll"
-                  className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
-                >
-                  {/* Loading Full Content - Skeleton */}
-                  {isLoadingFullContent && (
-                    <div className="space-y-6" role="status" aria-live="polite" aria-label="Loading blog content">
-                      {/* Title Skeleton */}
-                      <div className="skeleton h-8 w-3/4 mb-4"></div>
-
-                      {/* Section 1 */}
-                      <div className="space-y-3">
-                        <div className="skeleton h-6 w-1/2 mb-3"></div>
-                        <div className="skeleton h-4 w-full mb-2"></div>
-                        <div className="skeleton h-4 w-full mb-2"></div>
-                        <div className="skeleton h-4 w-5/6 mb-2"></div>
-                      </div>
-
-                      {/* Section 2 */}
-                      <div className="space-y-3">
-                        <div className="skeleton h-6 w-2/5 mb-3"></div>
-                        <div className="skeleton h-4 w-full mb-2"></div>
-                        <div className="skeleton h-4 w-full mb-2"></div>
-                        <div className="skeleton h-4 w-4/5 mb-2"></div>
-                      </div>
-
-                      {/* Section 3 */}
-                      <div className="space-y-3">
-                        <div className="skeleton h-6 w-3/5 mb-3"></div>
-                        <div className="skeleton h-4 w-full mb-2"></div>
-                        <div className="skeleton h-4 w-full mb-2"></div>
-                        <div className="skeleton h-4 w-3/4 mb-2"></div>
-                      </div>
-
-                      {/* Metadata Footer Skeleton */}
-                      <div className="skeleton h-24 w-full"></div>
-
-                      <span className="sr-only">Loading blog content</span>
-                    </div>
-                  )}
-
-                  {/* Modal Content */}
-                  {!isLoadingFullContent && (
-                    <div>
-                      {/* Modal Error State */}
-                      {modalError && (
-                        <div className="alert alert-error mb-4" role="alert" aria-live="assertive">
-                          <AlertCircle className="w-5 h-5" />
-                          <span>{modalError}</span>
-                          <button
-                            className="btn btn-sm btn-primary"
-                            onClick={() => selectedBlog && handleOpenBlog(selectedBlog)}
-                          >
-                            Retry
-                          </button>
-                        </div>
-                      )}
-
-                      {fullBlogContent?.blog_content && fullBlogContent.blog_content.sections ? (
-                        // Render full blog sections
-                        <div className="space-y-8 lg:space-y-12">
-                          {fullBlogContent.blog_content.sections
-                            .sort((a, b) => a.order - b.order)
-                            .map((section, index) => (
-                              <section
-                                key={section.htn_node_id}
-                                id={section.htn_node_id}
-                                className={`blog-section scroll-mt-20 border-b border-base-200 pb-8 last:border-b-0 relative ${
-                                  currentSectionIndex === index ? "ring-2 ring-primary/20 rounded-lg p-4 -m-4" : ""
-                                }`}
-                              >
-                                {/* Copy Link Button */}
-                                <button
-                                  className="absolute top-0 right-0 btn btn-ghost btn-sm focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                                  onClick={() => handleCopyLink(section.htn_node_id, section.title, fullBlogContent.id)}
-                                  aria-label={`Copy link to ${section.title}`}
-                                  title="Copy link to this section"
-                                >
-                                  {copiedSectionId === section.htn_node_id ? (
-                                    <Check className="w-4 h-4 text-success" />
-                                  ) : (
-                                    <Link className="w-4 h-4" />
-                                  )}
-                                </button>
-
-                                <h4 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 pr-12">{section.title}</h4>
-                                <MarkdownRenderer content={section.content} />
-                                {section.word_count && (
-                                  <div className="text-xs opacity-60 mt-3">{section.word_count} words</div>
-                                )}
-                              </section>
-                            ))}
-
-                          {fullBlogContent.blog_content.metadata && (
-                            <div className="bg-base-200 rounded-lg p-4 lg:p-6 space-y-3">
-                              <h4 className="text-sm font-semibold uppercase tracking-wide opacity-70 mb-3">
-                                Blog Metadata
-                              </h4>
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <FileText className="w-4 h-4 opacity-60" />
-                                  <span>
-                                    <strong>Total Words:</strong> {fullBlogContent.blog_content.metadata.total_words}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Clock className="w-4 h-4 opacity-60" />
-                                  <span>
-                                    <strong>Generation Time:</strong>{" "}
-                                    {fullBlogContent.blog_content.metadata.generation_time_seconds}s
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <FileText className="w-4 h-4 opacity-60" />
-                                  <span>
-                                    <strong>Model:</strong> {fullBlogContent.blog_content.metadata.model}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <FileText className="w-4 h-4 opacity-60" />
-                                  <span>
-                                    <strong>Sections:</strong>{" "}
-                                    {fullBlogContent.blog_content.metadata.sections_generated}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        // Fallback to preview if no full content
-                        <>
-                          <p className="text-base leading-relaxed whitespace-pre-wrap">
-                            {fullBlogContent?.preview || selectedBlog.preview}
-                          </p>
-                          {selectedBlog.generation_status === "completed" && (
-                            <div className="alert alert-warning mt-4" role="alert">
-                              <AlertTriangle className="w-5 h-5" />
-                              <span className="text-sm">
-                                Unable to load full content. You&apos;re viewing a preview.
-                              </span>
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                onClick={() => selectedBlog && handleOpenBlog(selectedBlog)}
-                              >
-                                Retry
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Keyboard Shortcut Hint */}
-                      {fullBlogContent?.blog_content?.sections && (
-                        <div className="text-center text-xs opacity-50 mt-8 pt-4 border-t border-base-200">
-                          Press <kbd className="kbd kbd-xs">Esc</kbd> to close, <kbd className="kbd kbd-xs">↑</kbd>
-                          <kbd className="kbd kbd-xs">↓</kbd> to navigate sections
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Screen reader announcements */}
-                  <div className="sr-only" role="status" aria-live="polite">
-                    {isLoadingFullContent && "Loading blog content"}
-                    {!isLoadingFullContent && fullBlogContent && "Content loaded"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Footer Metadata */}
-              <div className="border-t border-base-300 px-4 sm:px-6 py-4 lg:py-6 bg-base-100">
-                <h4 className="text-sm font-semibold uppercase tracking-wide opacity-70 mb-3">Published Information</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                  <div className="bg-base-50 dark:bg-base-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="w-4 h-4 opacity-60" />
-                      <span>
-                        <strong>Author:</strong> {truncateAddress(selectedBlog.author_wallet, 8)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-base-50 dark:bg-base-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 opacity-60" />
-                      <span>
-                        <strong>Created:</strong> {formatTimestamp(selectedBlog.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                  {selectedBlog.word_count && (
-                    <div className="bg-base-50 dark:bg-base-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <FileText className="w-4 h-4 opacity-60" />
-                        <span>
-                          <strong>Words:</strong> {selectedBlog.word_count}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {selectedBlog.tx_hash && (
-                    <div className="bg-base-50 dark:bg-base-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <ExternalLink className="w-4 h-4 opacity-60" />
-                        <a
-                          href={`https://etherscan.io/tx/${selectedBlog.tx_hash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="link link-primary hover:underline flex items-center gap-1"
-                        >
-                          <strong>Transaction:</strong> {truncateAddress(selectedBlog.tx_hash, 10)}
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+      {/* Modal Component (Full Blog View) - Reusing HyperBlogDetail */}
+      {isModalOpen && selectedBlog && (
+        <div className="modal modal-open backdrop-blur-sm" onClick={handleCloseModal} role="dialog" aria-modal="true">
+          <div
+            className="modal-box max-w-full sm:max-w-5xl lg:max-w-6xl max-h-[90vh] p-8 sm:p-10 overflow-hidden flex flex-col bg-base-100 rounded-xl shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <HyperBlogDetail blog={selectedBlog} onBack={handleCloseModal} showBackButton={true} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
