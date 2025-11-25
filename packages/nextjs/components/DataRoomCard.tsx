@@ -155,55 +155,61 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
   const displayDescription = isDescriptionExpanded ? descriptionText : truncateText(descriptionText, 150);
 
   return (
-    <div className={`card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow ${className}`}>
-      <div className="card-body">
+    <div className={`card-minimal group ${className}`}>
+      <div className="card-body p-0">
         {/* Header Section */}
-        <div className="flex flex-row items-center justify-between mb-3">
-          <div className="flex flex-row items-center gap-2">
-            <span className="text-2xl">🗂️</span>
-            <h3 className="card-title text-lg">{getBonfireName()}</h3>
+        <div className="flex flex-row items-start justify-between mb-4 gap-4">
+          <div className="flex flex-row items-start gap-3">
+            <span className="text-2xl mt-1">🗂️</span>
+            <h3 className="card-title text-xl font-bold font-serif leading-tight">{getBonfireName()}</h3>
           </div>
-          {getStatusBadge()}
+          <div className="flex-shrink-0">{getStatusBadge()}</div>
         </div>
 
         {/* Description Section */}
-        <div className="mb-4">
-          <p className="text-sm text-base-content/80 mb-1">{displayDescription}</p>
+        <div className="mb-5">
+          <p className="text-base text-base-content/80 mb-2 leading-relaxed">{displayDescription}</p>
           {shouldTruncateDescription && (
-            <button onClick={toggleDescriptionExpanded} className="btn btn-ghost btn-xs text-primary">
+            <button
+              onClick={toggleDescriptionExpanded}
+              className="btn btn-ghost btn-xs text-primary hover:bg-transparent hover:underline p-0 h-auto min-h-0 font-normal"
+            >
               {isDescriptionExpanded ? "Show less" : "Read more"}
             </button>
           )}
         </div>
 
         {/* Metadata Row */}
-        <div className="flex flex-col gap-2 text-sm mb-4">
-          <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-col gap-3 text-sm mb-6 border-t border-base-content/5 pt-4">
+          <div className="flex flex-row items-center gap-3 text-base-content/70">
             <span>📊</span>
-            <span>
+            <span className="font-medium">
               {microsub.queries_remaining} / {microsub.query_limit} queries
             </span>
           </div>
-          <div className="flex flex-row items-center gap-2">
+          <div className="flex flex-row items-center gap-3 text-base-content/70">
             <span>⏰</span>
             <span>Expires {formatTimestamp(microsub.expires_at)}</span>
           </div>
           {microsub.center_node_uuid && (
-            <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row items-center gap-3 text-base-content/70">
               <span>🎯</span>
               <span className="text-xs">Center: {truncateAddress(microsub.center_node_uuid, 6)}</span>
             </div>
           )}
           {microsub.system_prompt && (
-            <div className="flex flex-row items-center gap-2">
-              <span className="badge badge-secondary badge-sm">Custom Prompt</span>
+            <div className="flex flex-row items-center gap-3">
+              <span className="badge badge-secondary badge-outline badge-sm">Custom Prompt</span>
             </div>
           )}
         </div>
 
         {/* Preview Entities Section */}
-        <div className="mb-4">
-          <button onClick={toggleExpanded} className="btn btn-sm btn-ghost w-full justify-between">
+        <div className="mb-6">
+          <button
+            onClick={toggleExpanded}
+            className="btn btn-sm btn-ghost w-full justify-between bg-base-200/50 hover:bg-base-200 font-normal normal-case border-none"
+          >
             <span>
               {isExpanded ? "Hide Preview" : "Show Preview"} ({previewEntities.length} entities)
             </span>
@@ -211,17 +217,17 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
           </button>
 
           {isExpanded && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-4 space-y-3">
               {loading && (
                 <div className="flex justify-center items-center py-4">
-                  <span className="loading loading-spinner loading-sm"></span>
-                  <span className="ml-2 text-sm">Loading preview...</span>
+                  <span className="loading loading-spinner loading-sm text-primary"></span>
+                  <span className="ml-2 text-sm text-base-content/60">Loading preview...</span>
                 </div>
               )}
 
               {error && !loading && (
-                <div className="alert alert-error shadow-sm">
-                  <span className="text-sm">Preview unavailable</span>
+                <div className="alert alert-error shadow-sm text-sm py-2">
+                  <span>Preview unavailable</span>
                   <button onClick={handleRefresh} className="btn btn-xs btn-ghost">
                     Retry
                   </button>
@@ -229,31 +235,36 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
               )}
 
               {!loading && !error && previewEntities.length === 0 && (
-                <div className="alert alert-info shadow-sm">
-                  <span className="text-sm">No entities found for this description</span>
+                <div className="alert alert-info shadow-sm text-sm py-2 bg-base-200 border-none text-base-content/70">
+                  <span>No entities found for this description</span>
                 </div>
               )}
 
               {!loading && !error && previewEntities.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {previewEntities.map((entity, idx) => (
-                    <div key={entity.uuid || idx} className="card bg-base-200 shadow-sm">
-                      <div className="card-body p-3">
-                        <div className="flex flex-row items-start gap-2">
-                          {entity.entity_type && (
-                            <span className="badge badge-primary badge-sm">{entity.entity_type}</span>
+                    <div
+                      key={entity.uuid || idx}
+                      className="bg-base-100 border border-base-content/5 rounded-lg p-4 hover:border-base-content/10 transition-colors"
+                    >
+                      <div className="flex flex-row items-start gap-3">
+                        {entity.entity_type && (
+                          <span className="badge badge-primary badge-outline badge-sm mt-0.5 shrink-0">
+                            {entity.entity_type}
+                          </span>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm mb-1 text-base-content/90">{entity.name}</p>
+                          {entity.summary && (
+                            <p className="text-xs text-base-content/60 leading-relaxed">
+                              {truncateText(entity.summary, 80)}
+                            </p>
                           )}
-                          <div className="flex-1">
-                            <p className="font-semibold text-sm">{entity.name}</p>
-                            {entity.summary && (
-                              <p className="text-xs opacity-70 mt-1">{truncateText(entity.summary, 80)}</p>
-                            )}
-                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
-                  <p className="text-xs text-center opacity-50 mt-2">View more in graph</p>
+                  <p className="text-xs text-center text-base-content/40 mt-2">View more in graph</p>
                 </div>
               )}
             </div>
@@ -261,12 +272,17 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
         </div>
 
         {/* Card Actions */}
-        <div className="card-actions justify-end gap-2">
-          <button onClick={handleRefresh} className="btn btn-sm btn-ghost" disabled={loading || isFetching}>
+        <div className="flex items-center justify-between mt-auto pt-2">
+          <button
+            onClick={handleRefresh}
+            className="btn btn-sm btn-ghost text-base-content/60 hover:bg-base-200"
+            disabled={loading || isFetching}
+            title="Refresh Data"
+          >
             {loading || isFetching ? <span className="loading loading-spinner loading-xs"></span> : "🔄 Refresh"}
           </button>
           <button
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary btn-sm px-6 shadow-sm hover:shadow-md transition-all duration-200"
             onClick={() => router.push(`/x402-chat?agent=${microsub.agent_id}`)}
           >
             Use Data Room

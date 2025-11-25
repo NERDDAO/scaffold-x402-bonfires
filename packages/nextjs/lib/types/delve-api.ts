@@ -363,6 +363,10 @@ export interface HyperBlogInfo {
   blog_length: "short" | "medium" | "long";
   preview: string;
   blog_content?: BlogContent;
+  upvotes?: number;
+  downvotes?: number;
+  comment_count?: number;
+  view_count?: number;
 }
 
 /**

@@ -53,13 +53,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, customSchema]]}
       className={`
-        prose prose-lg max-w-none
+        prose prose-base sm:prose-lg lg:prose-xl max-w-none
         prose-slate dark:prose-invert
-        prose-headings:mb-4 prose-headings:mt-6
-        prose-p:leading-relaxed
-        prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-        prose-code:text-accent prose-code:bg-base-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-        prose-pre:bg-base-300 prose-pre:border prose-pre:border-base-content/10
+        prose-headings:font-serif prose-headings:tracking-tight
+        prose-headings:mb-4 prose-headings:mt-8
+        prose-p:leading-loose
+        prose-body:text-base-content/90
+        prose-strong:text-base-content prose-strong:font-semibold
+        prose-a:text-primary prose-a:underline prose-a:decoration-1 prose-a:underline-offset-2 hover:prose-a:decoration-2
+        prose-code:text-accent prose-code:bg-base-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+        prose-pre:bg-base-300 prose-pre:border prose-pre:border-base-content/5
         ${className}
       `}
     >
