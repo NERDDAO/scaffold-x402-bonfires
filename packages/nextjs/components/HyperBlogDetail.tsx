@@ -188,7 +188,7 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
         const response = await fetch(`/api/hyperblogs/${blog.id}/view`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_address: isConnected ? userAddress : undefined }),
+          body: JSON.stringify({ user_wallet: isConnected ? userAddress : undefined }),
         });
 
         if (response.ok) {
@@ -311,7 +311,7 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
         const response = await fetch(`/api/hyperblogs/${blog.id}/vote`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vote_type: voteType, user_address: userAddress }),
+          body: JSON.stringify({ vote_type: voteType, user_wallet: userAddress }),
         });
 
         if (!response.ok) {
@@ -385,7 +385,7 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
       const response = await fetch(`/api/hyperblogs/${blog.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment_text: newCommentText, user_address: userAddress }),
+        body: JSON.stringify({ comment_text: newCommentText, user_wallet: userAddress }),
       });
 
       if (!response.ok) {
