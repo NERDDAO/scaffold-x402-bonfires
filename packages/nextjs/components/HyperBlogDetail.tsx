@@ -29,8 +29,8 @@ import { useAccount } from "wagmi";
 type CommentType = {
   id: string;
   hyperblog_id: string;
-  user_address: string;
-  comment_text: string;
+  user_wallet: string;
+  content: string;
   created_at: string;
 };
 
@@ -319,10 +319,11 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
           throw new Error(errorData.error || "Failed to vote");
         }
 
-        const updatedBlog: HyperBlogInfo = await response.json();
+        const voteResponse: { success: boolean; upvotes: number; downvotes: number; user_vote: string | null } =
+          await response.json();
 
         setFullBlogContent(prev =>
-          prev ? { ...prev, upvotes: updatedBlog.upvotes, downvotes: updatedBlog.downvotes } : null,
+          prev ? { ...prev, upvotes: voteResponse.upvotes, downvotes: voteResponse.downvotes } : null,
         );
 
         setUserVotes(prev => new Map(prev).set(blog.id, voteType));
@@ -350,7 +351,10 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
       const response = await fetch(`/api/hyperblogs/${blog.id}/comments`);
       if (!response.ok) throw new Error("Failed to fetch comments");
       const data = await response.json();
-      setComments(data);
+      // The backend returns { comments: [], count: ... } or just [] if older API
+      // We need to handle both, but newer API returns object with comments array
+      const commentsList = Array.isArray(data) ? data : data.comments || [];
+      setComments(commentsList);
     } catch (error) {
       console.error("Error fetching comments:", error);
       notification.error("Failed to load comments");
@@ -722,11 +726,11 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
                           <div key={comment.id} className="card bg-base-50 border border-base-200 p-3 sm:p-4 text-sm">
                             <div className="flex justify-between items-start mb-2">
                               <span className="font-bold text-xs opacity-70">
-                                {truncateAddress(comment.user_address)}
+                                {truncateAddress(comment.user_wallet)}
                               </span>
                               <span className="text-xs opacity-50">{formatTimestamp(comment.created_at)}</span>
                             </div>
-                            <p className="whitespace-pre-wrap break-words">{comment.comment_text}</p>
+                            <p className="whitespace-pre-wrap break-words">{comment.content}</p>
                           </div>
                         ))
                       ) : (
