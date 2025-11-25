@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const limit = searchParams.get("limit") || "50";
     const offset = searchParams.get("offset") || "0";
 
-    const delveUrl = `${config.delve.apiUrl}/hyperblogs/${hyperblogId}/comments?limit=${limit}&offset=${offset}`;
+    const delveUrl = `${config.delve.apiUrl}/datarooms/hyperblogs/${hyperblogId}/comments?limit=${limit}&offset=${offset}`;
 
     const delveResponse = await fetch(delveUrl, {
       signal: AbortSignal.timeout(config.delve.timeout),
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 
-    const { comment_text, user_address } = body;
+    const { comment_text, user_wallet } = body;
 
     if (!comment_text || typeof comment_text !== "string" || comment_text.trim().length === 0) {
       return NextResponse.json({ error: "Invalid comment_text" }, { status: 400 });
@@ -69,18 +69,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Comment too long (max 1000 chars)" }, { status: 413 });
     }
 
-    if (!user_address || typeof user_address !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(user_address)) {
-      return NextResponse.json({ error: "Invalid user_address" }, { status: 400 });
+    if (!user_wallet || typeof user_wallet !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(user_wallet)) {
+      return NextResponse.json({ error: "Invalid user_wallet" }, { status: 400 });
     }
 
-    const delveUrl = `${config.delve.apiUrl}/hyperblogs/${hyperblogId}/comments`;
+    const delveUrl = `${config.delve.apiUrl}/datarooms/hyperblogs/${hyperblogId}/comments`;
 
     const delveResponse = await fetch(delveUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ comment_text: sanitizedComment, user_address }),
+      body: JSON.stringify({ comment_text: sanitizedComment, user_wallet }),
       signal: AbortSignal.timeout(config.delve.timeout),
     });
 
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     console.log("Comment added:", {
       hyperblog_id: hyperblogId,
-      user_address,
+      user_wallet,
       comment_length: sanitizedComment.length,
     });
 

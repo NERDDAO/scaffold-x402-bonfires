@@ -13,25 +13,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 
-    const { vote_type, user_address } = body;
+    const { vote_type, user_wallet } = body;
 
     if (vote_type !== "upvote" && vote_type !== "downvote") {
       return NextResponse.json({ error: "Invalid vote_type. Must be 'upvote' or 'downvote'" }, { status: 400 });
     }
 
     // Basic validation for Ethereum address
-    if (!user_address || typeof user_address !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(user_address)) {
-      return NextResponse.json({ error: "Invalid user_address" }, { status: 400 });
+    if (!user_wallet || typeof user_wallet !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(user_wallet)) {
+      return NextResponse.json({ error: "Invalid user_wallet" }, { status: 400 });
     }
 
-    const delveUrl = `${config.delve.apiUrl}/hyperblogs/${hyperblogId}/vote`;
+    const delveUrl = `${config.delve.apiUrl}/datarooms/hyperblogs/${hyperblogId}/vote`;
 
     const delveResponse = await fetch(delveUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ vote_type, user_address }),
+      body: JSON.stringify({ vote_type, user_wallet }),
       signal: AbortSignal.timeout(config.delve.timeout),
     });
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     console.log("Vote recorded:", {
       hyperblog_id: hyperblogId,
       vote_type,
-      user_address,
+      user_wallet,
     });
 
     return NextResponse.json(updatedHyperBlog, { status: 200 });
