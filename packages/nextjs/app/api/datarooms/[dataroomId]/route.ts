@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const responseData: DataRoomInfo = await response.json();
     console.log("DataRoom fetched successfully:", {
       id: responseData.id,
-      creator_id: responseData.creator_id,
+      creator_wallet: responseData.creator_wallet,
       bonfire_id: responseData.bonfire_id,
     });
 

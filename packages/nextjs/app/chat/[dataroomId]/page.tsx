@@ -350,7 +350,7 @@ export default function DataRoomSubscriptionPage() {
                 by{" "}
                 {dataRoom.creator_name ||
                   dataRoom.creator_username ||
-                  (dataRoom.creator_id ? truncateAddress(dataRoom.creator_id, 6) : "Anonymous")}
+                  (dataRoom.creator_wallet ? truncateAddress(dataRoom.creator_wallet, 6) : "Anonymous")}
               </span>
               <span className="badge badge-ghost">
                 {dataRoom.bonfire_name || truncateAddress(dataRoom.bonfire_id, 6)}
@@ -464,7 +464,7 @@ export default function DataRoomSubscriptionPage() {
               by{" "}
               {dataRoom.creator_name ||
                 dataRoom.creator_username ||
-                (dataRoom.creator_id ? truncateAddress(dataRoom.creator_id, 6) : "Anonymous")}
+                (dataRoom.creator_wallet ? truncateAddress(dataRoom.creator_wallet, 6) : "Anonymous")}
             </span>
             <span className="badge badge-ghost">
               {dataRoom.bonfire_name || truncateAddress(dataRoom.bonfire_id, 6)}

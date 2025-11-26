@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10), 0);
     const include_inactive = url.searchParams.get("include_inactive") === "true";
     const bonfire_id = url.searchParams.get("bonfire_id");
-    const creator_id = url.searchParams.get("creator_id");
+    const creator_wallet = url.searchParams.get("creator_wallet");
 
     // Validate parameters
     if (limit < 1 || limit > 100) {
@@ -34,8 +34,8 @@ export async function GET(request: Request) {
     if (bonfire_id) {
       delveUrl += `&bonfire_id=${encodeURIComponent(bonfire_id)}`;
     }
-    if (creator_id) {
-      delveUrl += `&creator_id=${encodeURIComponent(creator_id)}`;
+    if (creator_wallet) {
+      delveUrl += `&creator_wallet=${encodeURIComponent(creator_wallet)}`;
     }
 
     console.log(`Fetching data rooms: limit=${limit}, offset=${offset}`);
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     }
 
     console.log(
-      `Creating data room for bonfire: ${body.bonfire_id}${body.agent_id ? `, agent: ${body.agent_id}` : ""}`,
+      `Creating data room for bonfire: ${body.bonfire_id}${body.creator_wallet ? `, wallet: ${body.creator_wallet}` : ""}`,
     );
 
     const delveUrl = `${config.delve.apiUrl}/datarooms`;
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
     // Parse and return successful response
     const responseData: DataRoomInfo = await delveResponse.json();
 
-    console.log("DataRoom created:", { id: responseData.id, creator_id: responseData.creator_id });
+    console.log("DataRoom created:", { id: responseData.id, creator_wallet: responseData.creator_wallet });
 
     return NextResponse.json(responseData, { status: 201 });
   } catch (error) {

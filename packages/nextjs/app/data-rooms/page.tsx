@@ -65,8 +65,9 @@ export default function DataRoomsPage() {
 
     setIsCreating(true);
     try {
-      // Build request without agent_id - no longer required for hyperblog-only usage
+      // Build request with creator_wallet from connected wallet
       const requestBody: CreateDataRoomRequest = {
+        creator_wallet: address,
         bonfire_id: config.bonfireId,
         description: config.description,
         system_prompt: config.systemPrompt || "", // Backend requires system_prompt even if empty

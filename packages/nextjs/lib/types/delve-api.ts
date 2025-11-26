@@ -260,7 +260,7 @@ export interface DataRoomConfig {
  */
 export interface DataRoomInfo {
   id: string;
-  creator_id?: string; // Optional - datarooms may not have a creator agent
+  creator_wallet?: string; // Wallet address of the user who created this data room
   bonfire_id: string;
   description: string;
   system_prompt?: string;
@@ -292,7 +292,7 @@ export interface DataRoomListResponse {
  * Request payload for creating new marketplace listings
  */
 export interface CreateDataRoomRequest {
-  agent_id?: string; // Optional - no longer required for hyperblog-only usage
+  creator_wallet?: string; // Wallet address of the user creating the data room
   bonfire_id: string;
   description: string;
   system_prompt: string; // Required by backend (can be empty string)

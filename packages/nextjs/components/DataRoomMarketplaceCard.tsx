@@ -240,7 +240,7 @@ export function DataRoomMarketplaceCard({
             by{" "}
             {dataroom.creator_name ||
               dataroom.creator_username ||
-              (dataroom.creator_id ? truncateAddress(dataroom.creator_id, 6) : "Anonymous")}
+              (dataroom.creator_wallet ? truncateAddress(dataroom.creator_wallet, 6) : "Anonymous")}
           </span>
         </div>
 
