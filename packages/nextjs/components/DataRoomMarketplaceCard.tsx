@@ -237,7 +237,10 @@ export function DataRoomMarketplaceCard({
         {/* Creator Badge */}
         <div className="mb-2">
           <span className="badge badge-info badge-sm">
-            by {dataroom.creator_name || dataroom.creator_username || truncateAddress(dataroom.creator_id, 6)}
+            by{" "}
+            {dataroom.creator_name ||
+              dataroom.creator_username ||
+              (dataroom.creator_id ? truncateAddress(dataroom.creator_id, 6) : "Anonymous")}
           </span>
         </div>
 

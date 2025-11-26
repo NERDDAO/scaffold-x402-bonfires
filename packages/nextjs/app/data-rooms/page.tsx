@@ -65,49 +65,8 @@ export default function DataRoomsPage() {
 
     setIsCreating(true);
     try {
-      // First, get or create an agent for the user
-      const agentUsername = `user-${address.toLowerCase()}`;
-      let agentId: string;
-
-      try {
-        // Try to get existing agent by username
-        const getAgentResponse = await fetch(`/api/agents?username=${encodeURIComponent(agentUsername)}`);
-        if (getAgentResponse.ok) {
-          const agentListData = await getAgentResponse.json();
-          if (agentListData.agents && agentListData.agents.length > 0) {
-            agentId = agentListData.agents[0].id;
-          } else {
-            // Create new agent if doesn't exist
-            const createAgentResponse = await fetch("/api/agents", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                username: agentUsername,
-                name: `User Agent ${address.substring(0, 8)}`,
-                context: "Data room creator agent",
-              }),
-            });
-
-            if (!createAgentResponse.ok) {
-              const errorData = await createAgentResponse.json();
-              throw new Error(errorData.error || "Failed to create agent");
-            }
-
-            const newAgent = await createAgentResponse.json();
-            agentId = newAgent.id;
-          }
-        } else {
-          const errorData = await getAgentResponse.json();
-          throw new Error(errorData.error || "Failed to query agents");
-        }
-      } catch (agentError) {
-        throw new Error(
-          `Failed to get or create agent: ${agentError instanceof Error ? agentError.message : String(agentError)}`,
-        );
-      }
-
+      // Build request without agent_id - no longer required for hyperblog-only usage
       const requestBody: CreateDataRoomRequest = {
-        agent_id: agentId,
         bonfire_id: config.bonfireId,
         description: config.description,
         system_prompt: config.systemPrompt || "", // Backend requires system_prompt even if empty

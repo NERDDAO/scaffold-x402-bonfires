@@ -99,10 +99,7 @@ export async function POST(request: Request) {
   try {
     const body: CreateDataRoomRequest = await request.json();
 
-    // Validate required fields
-    if (!body.agent_id) {
-      return NextResponse.json({ error: "agent_id is required" }, { status: 400 });
-    }
+    // Validate required fields (agent_id is now optional)
     if (!body.bonfire_id) {
       return NextResponse.json({ error: "bonfire_id is required" }, { status: 400 });
     }
@@ -133,7 +130,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "expiration_days must be between 1 and 365" }, { status: 400 });
     }
 
-    console.log(`Creating data room for agent: ${body.agent_id}, bonfire: ${body.bonfire_id}`);
+    console.log(
+      `Creating data room for bonfire: ${body.bonfire_id}${body.agent_id ? `, agent: ${body.agent_id}` : ""}`,
+    );
 
     const delveUrl = `${config.delve.apiUrl}/datarooms`;
 
