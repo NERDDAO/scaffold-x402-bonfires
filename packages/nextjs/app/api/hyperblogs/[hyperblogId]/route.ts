@@ -26,7 +26,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Forward to delve backend
-    const delveUrl = `${config.delve.apiUrl}/hyperblogs/${hyperblogId}`;
+    // Updated to use the new /datarooms/hyperblogs/{id} path
+    const delveUrl = `${config.delve.apiUrl}/datarooms/hyperblogs/${hyperblogId}`;
 
     console.log(`Fetching HyperBlog status from: ${delveUrl}`);
 
