@@ -141,6 +141,18 @@ export interface DelveResponse {
   };
 }
 
+/**
+ * Center node information for DataRoom cards
+ * Used to display the focus node details prominently
+ */
+export interface CenterNodeInfo {
+  uuid: string;
+  name: string;
+  entity_type?: string;
+  summary?: string;
+  labels?: string[];
+}
+
 export interface EpisodeInput {
   summary: string;
   content: string;
@@ -346,6 +358,31 @@ export interface BlogContent {
 }
 
 /**
+ * HTN node progress for hyperblog generation
+ */
+export interface HTNNodeProgress {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+  status: "pending" | "in_progress" | "completed" | "failed";
+  word_count?: number;
+}
+
+/**
+ * HTN progress tracking for hyperblog generation
+ */
+export interface HyperBlogHTNProgress {
+  current_node_id: string;
+  current_node_name: string;
+  completed_nodes: number;
+  total_nodes: number;
+  progress_percentage: number;
+  nodes: HTNNodeProgress[];
+  estimated_time_remaining?: number;
+}
+
+/**
  * HyperBlog information - AI-generated blog post from DataRoom knowledge graph
  */
 export interface HyperBlogInfo {
@@ -362,11 +399,16 @@ export interface HyperBlogInfo {
   word_count: number | null;
   blog_length: "short" | "medium" | "long";
   preview: string;
+  summary?: string | null; // AI-generated 50-word summary (preferred over preview for feed display)
+  image_prompt?: string | null; // AI-generated prompt for creating blog banner image
   blog_content?: BlogContent;
   upvotes?: number;
   downvotes?: number;
   comment_count?: number;
   view_count?: number;
+  htn_progress?: HyperBlogHTNProgress;
+  // Taxonomy keywords from bonfire that match the blog content
+  taxonomy_keywords?: string[] | null;
 }
 
 /**

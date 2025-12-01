@@ -513,10 +513,10 @@ export const HyperBlogFeed = ({
                     {blog.user_query}
                   </h4>
 
-                  {/* Preview Text */}
+                  {/* Preview Text - prefer summary over truncated preview */}
                   <div className="relative mb-6">
                     <p className="text-base text-base-content/80 leading-relaxed line-clamp-4">
-                      {truncatePreviewSmart(blog.preview, 280)}
+                      {blog.summary || truncatePreviewSmart(blog.preview, 280)}
                     </p>
                   </div>
 
@@ -554,6 +554,21 @@ export const HyperBlogFeed = ({
                       </>
                     )}
                   </div>
+
+                  {/* Taxonomy Keywords Badges */}
+                  {blog.taxonomy_keywords && blog.taxonomy_keywords.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3" aria-label="Taxonomy keywords">
+                      <span className="text-xs opacity-60 mr-1">🏷️</span>
+                      {blog.taxonomy_keywords.slice(0, 5).map((keyword, idx) => (
+                        <span key={idx} className="badge badge-primary badge-sm">
+                          {keyword}
+                        </span>
+                      ))}
+                      {blog.taxonomy_keywords.length > 5 && (
+                        <span className="badge badge-ghost badge-sm">+{blog.taxonomy_keywords.length - 5} more</span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Interaction Row Preview (Non-interactive in card, just visual) */}
                   {blog.generation_status === "completed" && (

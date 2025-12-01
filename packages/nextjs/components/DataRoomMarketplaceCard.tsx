@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HyperBlogCreator } from "@/components/HyperBlogCreator";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
-import type { DataRoomInfo, DataRoomPreviewResponse } from "@/lib/types/delve-api";
+import type { CenterNodeInfo, DataRoomInfo, DataRoomPreviewResponse } from "@/lib/types/delve-api";
 import { formatTimestamp, truncateAddress, truncateText } from "@/lib/utils";
 import { notification } from "@/utils/scaffold-eth/notification";
 import { useAccount } from "wagmi";
@@ -30,9 +30,12 @@ export function DataRoomMarketplaceCard({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isHyperBlogModalOpen, setIsHyperBlogModalOpen] = useState(false);
+  const [centerNodeInfo, setCenterNodeInfo] = useState<CenterNodeInfo | null>(null);
+  const [centerNodeLoading, setCenterNodeLoading] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const centerNodeAbortRef = useRef<AbortController | null>(null);
 
   const handleSubscribe = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click navigation
@@ -179,6 +182,58 @@ export function DataRoomMarketplaceCard({
     }
   };
 
+  // Fetch center node info from the graph
+  const fetchCenterNodeInfo = async () => {
+    if (!dataroom.center_node_uuid || !dataroom.bonfire_id) return;
+
+    // Abort any existing request
+    if (centerNodeAbortRef.current) {
+      centerNodeAbortRef.current.abort();
+    }
+
+    centerNodeAbortRef.current = new AbortController();
+    setCenterNodeLoading(true);
+
+    try {
+      const response = await fetch(`/api/bonfires/${dataroom.bonfire_id}/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "",
+          num_results: 10,
+          center_node_uuid: dataroom.center_node_uuid,
+        }),
+        signal: centerNodeAbortRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch center node: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Find the center node in the returned entities by matching UUID
+      const centerNode = (data.entities || []).find(
+        (entity: any) => entity.uuid === dataroom.center_node_uuid || entity.id === dataroom.center_node_uuid,
+      );
+
+      if (centerNode) {
+        setCenterNodeInfo({
+          uuid: centerNode.uuid || centerNode.id,
+          name: centerNode.name || "Unknown Node",
+          entity_type: centerNode.entity_type || centerNode.type,
+          summary: centerNode.summary || centerNode.description,
+          labels: centerNode.labels,
+        });
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      console.error("Failed to fetch center node info:", err);
+    } finally {
+      setCenterNodeLoading(false);
+    }
+  };
+
   // Handle preview toggle with debouncing
   const handlePreviewToggle = () => {
     const newExpanded = !isPreviewExpanded;
@@ -196,6 +251,14 @@ export function DataRoomMarketplaceCard({
     }
   };
 
+  // Fetch center node info on mount if center_node_uuid exists
+  useEffect(() => {
+    if (dataroom.center_node_uuid && !centerNodeInfo) {
+      fetchCenterNodeInfo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataroom.center_node_uuid]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -204,6 +267,9 @@ export function DataRoomMarketplaceCard({
       }
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (centerNodeAbortRef.current) {
+        centerNodeAbortRef.current.abort();
       }
     };
   }, []);
@@ -221,22 +287,30 @@ export function DataRoomMarketplaceCard({
       onClick={handleCardClick}
     >
       <div className="card-body">
-        {/* Header Section */}
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📁</span>
-            <h3 className="card-title text-lg">{dataroom.bonfire_name || truncateAddress(dataroom.bonfire_id, 6)}</h3>
+        {/* Header Section - Description as Title */}
+        <div className="flex items-start justify-between mb-2 gap-3">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <span className="text-2xl mt-0.5">📁</span>
+            <div className="flex-1 min-w-0">
+              <h3 className="card-title text-lg leading-tight mb-2">
+                {truncateText(dataroom.description, 100) || "Untitled Data Room"}
+              </h3>
+              {/* Bonfire Badge */}
+              <span className="badge badge-info badge-sm">
+                {dataroom.bonfire_name || truncateAddress(dataroom.bonfire_id, 6)}
+              </span>
+            </div>
           </div>
           {dataroom.is_active ? (
-            <span className="badge badge-success badge-sm">Active</span>
+            <span className="badge badge-success badge-sm flex-shrink-0">Active</span>
           ) : (
-            <span className="badge badge-ghost badge-sm">Inactive</span>
+            <span className="badge badge-ghost badge-sm flex-shrink-0">Inactive</span>
           )}
         </div>
 
         {/* Creator Badge */}
         <div className="mb-2">
-          <span className="badge badge-info badge-sm">
+          <span className="badge badge-outline badge-sm">
             by{" "}
             {dataroom.creator_name ||
               dataroom.creator_username ||
@@ -244,10 +318,10 @@ export function DataRoomMarketplaceCard({
           </span>
         </div>
 
-        {/* Description Section */}
-        <div className="mb-3">
-          <p className="text-sm opacity-80">{isDescriptionExpanded ? dataroom.description : truncatedDescription}</p>
-          {shouldTruncate && (
+        {/* Full Description (only if longer than 100 chars) */}
+        {shouldTruncate && (
+          <div className="mb-3">
+            <p className="text-sm opacity-80">{isDescriptionExpanded ? dataroom.description : truncatedDescription}</p>
             <button
               className="btn btn-ghost btn-xs mt-1"
               onClick={e => {
@@ -257,8 +331,8 @@ export function DataRoomMarketplaceCard({
             >
               {isDescriptionExpanded ? "Show less" : "Read more"}
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Pricing & Limits Section */}
         <div className="flex flex-wrap gap-2 mb-3 text-xs">
@@ -276,9 +350,40 @@ export function DataRoomMarketplaceCard({
           </div>
         </div>
 
+        {/* Center Node Info Section */}
+        {dataroom.center_node_uuid && (
+          <div className="mb-3 bg-base-200/50 border border-base-content/10 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-base-content/70 uppercase tracking-wide">
+              <span>🎯</span>
+              <span>Focus Node</span>
+            </div>
+            {centerNodeLoading ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="loading loading-spinner loading-xs"></span>
+                <span className="opacity-70">Loading node info...</span>
+              </div>
+            ) : centerNodeInfo ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  {centerNodeInfo.entity_type && (
+                    <span className="badge badge-primary badge-outline badge-xs">{centerNodeInfo.entity_type}</span>
+                  )}
+                  <span className="font-semibold text-sm text-base-content/90">{centerNodeInfo.name}</span>
+                </div>
+                {centerNodeInfo.summary && (
+                  <p className="text-xs text-base-content/60 leading-relaxed line-clamp-2">
+                    {truncateText(centerNodeInfo.summary, 80)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-base-content/50">{truncateAddress(dataroom.center_node_uuid, 8)}</div>
+            )}
+          </div>
+        )}
+
         {/* Configuration Indicators */}
         <div className="flex flex-wrap gap-2 mb-3">
-          {dataroom.center_node_uuid && <span className="badge badge-secondary badge-sm">🎯 Focused Search</span>}
           {dataroom.system_prompt && <span className="badge badge-accent badge-sm">🤖 Custom AI Prompt</span>}
         </div>
 

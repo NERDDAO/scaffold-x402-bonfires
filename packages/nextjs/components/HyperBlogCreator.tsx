@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { HyperBlogProgressModal } from "@/components/HyperBlogProgressModal";
 import { usePaymentHeader } from "@/hooks/usePaymentHeader";
-import { HyperBlogInfo, PurchaseHyperBlogRequest, PurchaseHyperBlogResponse } from "@/lib/types/delve-api";
+import {
+  HyperBlogHTNProgress,
+  HyperBlogInfo,
+  PurchaseHyperBlogRequest,
+  PurchaseHyperBlogResponse,
+} from "@/lib/types/delve-api";
 import { formatErrorMessage } from "@/lib/utils";
 import { notification } from "@/utils/scaffold-eth/notification";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -40,6 +46,10 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
+  // HTN Progress state
+  const [htnProgress, setHtnProgress] = useState<HyperBlogHTNProgress | null>(null);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+
   // Refs
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -60,6 +70,8 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       setGenerationStatus("idle");
       setWordCount(null);
       setPreview(null);
+      setHtnProgress(null);
+      setShowProgressModal(false);
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
@@ -121,20 +133,33 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
           const data: HyperBlogInfo = await response.json();
           setGenerationStatus(data.generation_status);
 
-          if (data.generation_status === "completed") {
+          // Update HTN progress if available
+          if (data.htn_progress) {
+            console.log("HTN progress received:", data.htn_progress);
+            setHtnProgress(data.htn_progress);
+          }
+
+          if (data.generation_status === "generating") {
+            // Keep progress modal open during generation
+            setShowProgressModal(true);
+          } else if (data.generation_status === "completed") {
             setWordCount(data.word_count);
             setPreview(data.preview);
+            setShowProgressModal(false);
+            setHtnProgress(null);
             stopPolling();
-            notification.success("Blog generation completed!");
+            const truncatedQuery = userQuery.length > 60 ? userQuery.substring(0, 60) + "..." : userQuery;
+            notification.success(`Blog completed: "${truncatedQuery}"!`);
             if (onSuccess) {
               onSuccess(hyperblogIdToCheck);
             }
           } else if (data.generation_status === "failed") {
+            setShowProgressModal(false);
+            setHtnProgress(null);
             stopPolling();
             setError("Blog generation failed. Please try again.");
             notification.error("Blog generation failed");
           }
-          // If "generating", continue polling
         } catch (err) {
           console.error("Error polling hyperblog status:", err);
           // Don't stop polling on error - will retry on next interval
@@ -230,6 +255,12 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
 
       // Start polling if generating
       if (status === "generating") {
+        // Show progress modal immediately
+        setShowProgressModal(true);
+        // Set initial HTN progress if available in response
+        if (data.hyperblog.htn_progress) {
+          setHtnProgress(data.hyperblog.htn_progress);
+        }
         await startPolling(createdHyperblogId);
       } else if (status === "completed") {
         setWordCount(data.hyperblog.word_count);
@@ -419,8 +450,8 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
                 </div>
               )}
 
-              {/* Generation Status Display */}
-              {hyperblogId && (
+              {/* Generation Status Display - Hidden when progress modal is shown */}
+              {hyperblogId && !showProgressModal && (
                 <div className="card bg-base-200">
                   <div className="card-body p-4">
                     <div className="flex items-center gap-3 mb-2">
@@ -513,6 +544,14 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
           </>
         )}
       </div>
+
+      {/* HTN Progress Modal - Overlays on top of the main modal */}
+      <HyperBlogProgressModal
+        isOpen={showProgressModal}
+        htnProgress={htnProgress}
+        userQuery={userQuery}
+        onClose={() => setShowProgressModal(false)}
+      />
     </div>
   );
 };

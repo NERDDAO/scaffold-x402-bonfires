@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BonfireInfo, DelveResponse, MicrosubInfo } from "~~/lib/types/delve-api";
+import type { BonfireInfo, CenterNodeInfo, DelveResponse, MicrosubInfo } from "~~/lib/types/delve-api";
 import { formatTimestamp, truncateAddress, truncateText } from "~~/lib/utils";
 
 interface DataRoomCardProps {
@@ -27,7 +27,10 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const [hasEverFetched, setHasEverFetched] = useState<boolean>(false);
+  const [centerNodeInfo, setCenterNodeInfo] = useState<CenterNodeInfo | null>(null);
+  const [centerNodeLoading, setCenterNodeLoading] = useState<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const centerNodeAbortRef = useRef<AbortController | null>(null);
 
   // Get bonfire name
   const getBonfireName = useCallback((): string => {
@@ -36,6 +39,71 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
     const bonfire = bonfires.find(b => b.id === microsub.bonfire_id);
     return bonfire ? bonfire.name : truncateAddress(microsub.bonfire_id, 6);
   }, [microsub.bonfire_id, bonfires]);
+
+  // Fetch center node info from the graph
+  const fetchCenterNodeInfo = useCallback(async () => {
+    if (!microsub.center_node_uuid || !microsub.bonfire_id) return;
+
+    // Abort any existing request
+    if (centerNodeAbortRef.current) {
+      centerNodeAbortRef.current.abort();
+    }
+
+    centerNodeAbortRef.current = new AbortController();
+    setCenterNodeLoading(true);
+
+    try {
+      const response = await fetch(`/api/bonfires/${microsub.bonfire_id}/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "",
+          num_results: 10,
+          center_node_uuid: microsub.center_node_uuid,
+        }),
+        signal: centerNodeAbortRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch center node: ${response.statusText}`);
+      }
+
+      const data: DelveResponse = await response.json();
+
+      // Find the center node in the returned entities by matching UUID
+      const centerNode = (data.entities || []).find(
+        entity => entity.uuid === microsub.center_node_uuid || entity.id === microsub.center_node_uuid,
+      );
+
+      if (centerNode) {
+        setCenterNodeInfo({
+          uuid: centerNode.uuid || centerNode.id,
+          name: centerNode.name || "Unknown Node",
+          entity_type: centerNode.entity_type || centerNode.type,
+          summary: centerNode.summary || centerNode.description,
+          labels: centerNode.labels,
+        });
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      console.error("Failed to fetch center node info:", err);
+    } finally {
+      setCenterNodeLoading(false);
+    }
+  }, [microsub.center_node_uuid, microsub.bonfire_id]);
+
+  // Fetch center node info on mount if center_node_uuid exists
+  useEffect(() => {
+    if (microsub.center_node_uuid && !centerNodeInfo) {
+      fetchCenterNodeInfo();
+    }
+
+    return () => {
+      if (centerNodeAbortRef.current) {
+        centerNodeAbortRef.current.abort();
+      }
+    };
+  }, [microsub.center_node_uuid, fetchCenterNodeInfo, centerNodeInfo]);
 
   // Get status badge
   const getStatusBadge = (): React.ReactElement => {
@@ -157,27 +225,65 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
   return (
     <div className={`card-minimal group ${className}`}>
       <div className="card-body p-0">
-        {/* Header Section */}
-        <div className="flex flex-row items-start justify-between mb-4 gap-4">
-          <div className="flex flex-row items-start gap-3">
+        {/* Header Section - Description as Title */}
+        <div className="flex flex-row items-start justify-between mb-3 gap-4">
+          <div className="flex flex-row items-start gap-3 flex-1 min-w-0">
             <span className="text-2xl mt-1">🗂️</span>
-            <h3 className="card-title text-xl font-bold font-serif leading-tight">{getBonfireName()}</h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="card-title text-xl font-bold font-serif leading-tight mb-2">
+                {truncateText(microsub.description || "Untitled Data Room", 100)}
+              </h3>
+              {/* Bonfire Badge */}
+              <span className="badge badge-info badge-sm">{getBonfireName()}</span>
+            </div>
           </div>
           <div className="flex-shrink-0">{getStatusBadge()}</div>
         </div>
 
-        {/* Description Section */}
-        <div className="mb-5">
-          <p className="text-base text-base-content/80 mb-2 leading-relaxed">{displayDescription}</p>
-          {shouldTruncateDescription && (
+        {/* Full Description (if longer than title) */}
+        {shouldTruncateDescription && (
+          <div className="mb-4">
+            <p className="text-base text-base-content/80 mb-2 leading-relaxed">{displayDescription}</p>
             <button
               onClick={toggleDescriptionExpanded}
               className="btn btn-ghost btn-xs text-primary hover:bg-transparent hover:underline p-0 h-auto min-h-0 font-normal"
             >
               {isDescriptionExpanded ? "Show less" : "Read more"}
             </button>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Center Node Info Section */}
+        {microsub.center_node_uuid && (
+          <div className="mb-4 bg-base-200/50 border border-base-content/10 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-base-content/70 uppercase tracking-wide">
+              <span>🎯</span>
+              <span>Focus Node</span>
+            </div>
+            {centerNodeLoading ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="loading loading-spinner loading-xs"></span>
+                <span className="opacity-70">Loading node info...</span>
+              </div>
+            ) : centerNodeInfo ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  {centerNodeInfo.entity_type && (
+                    <span className="badge badge-primary badge-outline badge-xs">{centerNodeInfo.entity_type}</span>
+                  )}
+                  <span className="font-semibold text-sm text-base-content/90">{centerNodeInfo.name}</span>
+                </div>
+                {centerNodeInfo.summary && (
+                  <p className="text-xs text-base-content/60 leading-relaxed">
+                    {truncateText(centerNodeInfo.summary, 80)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-base-content/50">{truncateAddress(microsub.center_node_uuid, 8)}</div>
+            )}
+          </div>
+        )}
 
         {/* Metadata Row */}
         <div className="flex flex-col gap-3 text-sm mb-6 border-t border-base-content/5 pt-4">
@@ -191,12 +297,6 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
             <span>⏰</span>
             <span>Expires {formatTimestamp(microsub.expires_at)}</span>
           </div>
-          {microsub.center_node_uuid && (
-            <div className="flex flex-row items-center gap-3 text-base-content/70">
-              <span>🎯</span>
-              <span className="text-xs">Center: {truncateAddress(microsub.center_node_uuid, 6)}</span>
-            </div>
-          )}
           {microsub.system_prompt && (
             <div className="flex flex-row items-center gap-3">
               <span className="badge badge-secondary badge-outline badge-sm">Custom Prompt</span>
