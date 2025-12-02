@@ -339,7 +339,11 @@ export function DataRoomMarketplaceCard({
           <div className="flex items-center gap-1">
             <span>💰</span>
             <span className="font-semibold">
-              ${dataroom.current_hyperblog_price_usd || dataroom.price_usd.toFixed(2)} USD
+              $
+              {dataroom.current_hyperblog_price_usd && parseFloat(dataroom.current_hyperblog_price_usd) > 0
+                ? dataroom.current_hyperblog_price_usd
+                : dataroom.price_usd.toFixed(2)}{" "}
+              USD
             </span>
             {dataroom.dynamic_pricing_enabled && <span className="badge badge-warning badge-xs">Dynamic ▲</span>}
             {dataroom.dynamic_pricing_enabled && dataroom.total_purchases === 0 && (

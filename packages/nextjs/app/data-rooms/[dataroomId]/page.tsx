@@ -159,7 +159,10 @@ export default function DataRoomDetailPage() {
               <div className="stat bg-base-200 rounded-lg">
                 <div className="stat-title">Price</div>
                 <div className="stat-value text-2xl">
-                  ${dataroom.current_hyperblog_price_usd || dataroom.price_usd.toFixed(2)}
+                  $
+                  {dataroom.current_hyperblog_price_usd && parseFloat(dataroom.current_hyperblog_price_usd) > 0
+                    ? dataroom.current_hyperblog_price_usd
+                    : dataroom.price_usd.toFixed(2)}
                 </div>
                 <div className="stat-desc">{dataroom.dynamic_pricing_enabled ? "USD (dynamic)" : "USD per blog"}</div>
               </div>
