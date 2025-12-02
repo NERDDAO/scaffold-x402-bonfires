@@ -343,7 +343,7 @@ export function DataRoomMarketplaceCard({
             </span>
             {dataroom.dynamic_pricing_enabled && <span className="badge badge-warning badge-xs">Dynamic ▲</span>}
             {dataroom.dynamic_pricing_enabled && dataroom.total_purchases === 0 && (
-              <span className="badge badge-success badge-xs">First blog FREE! 🎉</span>
+              <span className="badge badge-success badge-xs">No protocol fee! 🎉</span>
             )}
           </div>
           <div className="flex items-center gap-1">

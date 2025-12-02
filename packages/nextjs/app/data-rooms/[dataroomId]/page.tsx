@@ -193,7 +193,7 @@ export default function DataRoomDetailPage() {
                 <div className="text-sm">
                   {dataroom.total_purchases === 0 ? (
                     <p>
-                      First blog is <strong>FREE</strong>! Price increases with each purchase.
+                      First blog has <strong>no protocol fee</strong>! Price increases with each purchase.
                     </p>
                   ) : (
                     <p>

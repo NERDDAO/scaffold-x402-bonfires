@@ -352,18 +352,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
                       : dataroomDescription}
                   </div>
                   {dataroomPrice !== undefined && (
-                    <div className="mt-2 text-sm">
-                      {dataroomPrice === 0 ? (
-                        <span className="font-bold text-success">FREE (First blog!) 🎉</span>
-                      ) : (
-                        <span className="font-bold">${dataroomPrice.toFixed(2)} USD</span>
-                      )}
-                    </div>
-                  )}
-                  {dataroomPrice === 0 && (
-                    <p className="text-xs mt-1 opacity-80">
-                      This dataroom offers the first blog for free! Subsequent blogs may have a cost.
-                    </p>
+                    <div className="mt-2 text-sm font-bold">${dataroomPrice.toFixed(2)} USD</div>
                   )}
                 </div>
               </div>

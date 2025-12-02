@@ -434,7 +434,7 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
 
                 <div className="alert alert-info text-xs">
                   <span>
-                    💡 First hyperblog will be FREE. Price formula: base + (step × purchases) - (decay × hours)
+                    💡 First hyperblog has no protocol fee. Price formula: base + (step × purchases) - (decay × hours)
                   </span>
                 </div>
               </>
