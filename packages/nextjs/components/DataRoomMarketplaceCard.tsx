@@ -489,7 +489,9 @@ export function DataRoomMarketplaceCard({
         dataroomId={dataroom.id}
         dataroomDescription={dataroom.description}
         dataroomPrice={
-          dataroom.current_hyperblog_price_usd ? parseFloat(dataroom.current_hyperblog_price_usd) : dataroom.price_usd
+          dataroom.current_hyperblog_price_usd && parseFloat(dataroom.current_hyperblog_price_usd) > 0
+            ? parseFloat(dataroom.current_hyperblog_price_usd)
+            : dataroom.price_usd
         }
         isOpen={isHyperBlogModalOpen}
         onClose={handleCloseHyperBlogModal}

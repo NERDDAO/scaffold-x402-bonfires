@@ -195,7 +195,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       // Calculate payment amount
       let priceUsd: number;
 
-      if (dataroomPrice !== undefined) {
+      if (dataroomPrice !== undefined && dataroomPrice > 0) {
         priceUsd = dataroomPrice;
       } else {
         // Fetch dataroom details to get current price
@@ -204,10 +204,11 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
           throw new Error("Failed to fetch dataroom details");
         }
         const dataroomData = await dataroomResponse.json();
-        // Use current_hyperblog_price_usd if available, otherwise price_usd
-        priceUsd = dataroomData.current_hyperblog_price_usd
+        // Use current_hyperblog_price_usd if > 0, otherwise fall back to price_usd
+        const dynamicPrice = dataroomData.current_hyperblog_price_usd
           ? parseFloat(dataroomData.current_hyperblog_price_usd)
-          : dataroomData.price_usd;
+          : 0;
+        priceUsd = dynamicPrice > 0 ? dynamicPrice : dataroomData.price_usd;
       }
 
       // Set amount as decimal string (buildAndSignPaymentHeader handles conversion)
