@@ -44,11 +44,35 @@ export async function POST(request: NextRequest) {
       dataroom_id: body.dataroom_id,
       user_query: body.user_query,
       is_public: body.is_public ?? true,
+      blog_length: body.blog_length,
       expected_amount: body.expected_amount,
     };
 
     // Forward to delve backend
     const delveUrl = `${config.delve.apiUrl}/hyperblogs/purchase`;
+
+    // Debug: Decode and log payment header structure
+    try {
+      const decodedHeader = JSON.parse(atob(body.payment_header));
+      console.log(`Payment header structure:`, {
+        x402Version: decodedHeader.x402Version,
+        scheme: decodedHeader.scheme,
+        network: decodedHeader.network,
+        configNetwork: config.payment.network,
+        configChainId: config.payment.chainId,
+        hasAuthorization: !!decodedHeader.payload?.authorization,
+        hasSignature: !!decodedHeader.payload?.signature,
+        authorization: decodedHeader.payload?.authorization
+          ? {
+              from: decodedHeader.payload.authorization.from,
+              to: decodedHeader.payload.authorization.to,
+              value: decodedHeader.payload.authorization.value,
+            }
+          : null,
+      });
+    } catch (e) {
+      console.warn("Could not decode payment header for debugging:", e);
+    }
 
     console.log(`Forwarding HyperBlog purchase request to: ${delveUrl}`);
 
