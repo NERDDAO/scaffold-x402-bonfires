@@ -158,8 +158,10 @@ export default function DataRoomDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div className="stat bg-base-200 rounded-lg">
                 <div className="stat-title">Price</div>
-                <div className="stat-value text-2xl">${dataroom.price_usd.toFixed(2)}</div>
-                <div className="stat-desc">USD per blog</div>
+                <div className="stat-value text-2xl">
+                  ${dataroom.current_hyperblog_price_usd || dataroom.price_usd.toFixed(2)}
+                </div>
+                <div className="stat-desc">{dataroom.dynamic_pricing_enabled ? "USD (dynamic)" : "USD per blog"}</div>
               </div>
               <div className="stat bg-base-200 rounded-lg">
                 <div className="stat-title">Query Limit</div>
@@ -184,6 +186,24 @@ export default function DataRoomDetailPage() {
               </div>
             </div>
 
+            {/* Dynamic Pricing Info */}
+            {dataroom.dynamic_pricing_enabled && (
+              <div className="alert alert-info mb-4">
+                <span>💡 Dynamic Pricing Active</span>
+                <div className="text-sm">
+                  {dataroom.total_purchases === 0 ? (
+                    <p>
+                      First blog is <strong>FREE</strong>! Price increases with each purchase.
+                    </p>
+                  ) : (
+                    <p>
+                      Current price: <strong>${dataroom.current_hyperblog_price_usd}</strong> (updates with purchases)
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* System Prompt (if present) */}
             {dataroom.system_prompt && (
               <div className="mb-4">
@@ -207,7 +227,9 @@ export default function DataRoomDetailPage() {
         <HyperBlogCreator
           dataroomId={dataroomId}
           dataroomDescription={dataroom.description}
-          dataroomPrice={dataroom.price_usd}
+          dataroomPrice={
+            dataroom.current_hyperblog_price_usd ? parseFloat(dataroom.current_hyperblog_price_usd) : dataroom.price_usd
+          }
           isOpen={isCreatorOpen}
           onClose={handleCloseCreator}
           onSuccess={handleCreatorSuccess}

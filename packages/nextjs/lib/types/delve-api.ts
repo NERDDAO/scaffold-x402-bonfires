@@ -264,6 +264,10 @@ export interface DataRoomConfig {
   priceUsd: number;
   queryLimit: number;
   expirationDays: number;
+  // Dynamic pricing fields (optional)
+  dynamicPricingEnabled?: boolean;
+  priceStepUsd?: number;
+  priceDecayRate?: number;
 }
 
 /**
@@ -288,6 +292,13 @@ export interface DataRoomInfo {
   creator_username?: string;
   bonfire_name?: string;
   agent_id?: string;
+  // Dynamic pricing fields
+  current_hyperblog_price_usd?: string; // Computed dynamic price from backend (formatted USD string)
+  dynamic_pricing_enabled?: boolean; // Whether dynamic pricing is active
+  price_step_usd?: number; // Price increase per purchase
+  price_decay_rate?: number; // Linear decay rate per hour
+  total_purchases?: number; // Count of hyperblog purchases
+  last_purchase_at?: string; // ISO timestamp of last purchase
 }
 
 /**
@@ -312,6 +323,10 @@ export interface CreateDataRoomRequest {
   price_usd: number;
   query_limit: number;
   expiration_days: number;
+  // Dynamic pricing fields (optional)
+  dynamic_pricing_enabled?: boolean; // Optional, defaults to false
+  price_step_usd?: number; // Optional, defaults to 0.0
+  price_decay_rate?: number; // Optional, defaults to 0.0
 }
 
 /**

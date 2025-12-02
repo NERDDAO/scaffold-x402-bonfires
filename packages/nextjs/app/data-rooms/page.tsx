@@ -75,6 +75,12 @@ export default function DataRoomsPage() {
         price_usd: config.priceUsd,
         query_limit: config.queryLimit,
         expiration_days: config.expirationDays,
+        // Add dynamic pricing fields if enabled
+        ...(config.dynamicPricingEnabled && {
+          dynamic_pricing_enabled: config.dynamicPricingEnabled,
+          price_step_usd: config.priceStepUsd || 0.0,
+          price_decay_rate: config.priceDecayRate || 0.0,
+        }),
       };
 
       const response = await fetch("/api/datarooms", {

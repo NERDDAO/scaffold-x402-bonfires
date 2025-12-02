@@ -31,6 +31,10 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
   const [selectedCenterNode, setSelectedCenterNode] = useState<PreviewEntity | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Dynamic pricing state
+  const [dynamicPricingEnabled, setDynamicPricingEnabled] = useState<boolean>(false);
+  const [priceStepUsd, setPriceStepUsd] = useState<number>(0.0);
+  const [priceDecayRate, setPriceDecayRate] = useState<number>(0.0);
 
   // Use agent selection hook to fetch bonfires
   const agentSelection = useAgentSelection();
@@ -48,6 +52,10 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
       setPreviewEntities([]);
       setSelectedCenterNode(null);
       setError(null);
+      // Reset dynamic pricing state
+      setDynamicPricingEnabled(false);
+      setPriceStepUsd(0.0);
+      setPriceDecayRate(0.0);
     }
   }, [isOpen]);
 
@@ -151,6 +159,10 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
       priceUsd,
       queryLimit,
       expirationDays,
+      // Add dynamic pricing fields
+      dynamicPricingEnabled,
+      priceStepUsd,
+      priceDecayRate,
     };
 
     onComplete(config);
@@ -163,6 +175,9 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
     priceUsd,
     queryLimit,
     expirationDays,
+    dynamicPricingEnabled,
+    priceStepUsd,
+    priceDecayRate,
     onComplete,
     onClose,
   ]);
@@ -359,6 +374,71 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
                 <span className="label-text-alt">Subscription duration in days (1-365)</span>
               </label>
             </div>
+
+            <div className="divider">Dynamic Pricing (Optional)</div>
+
+            <div className="form-control">
+              <label className="label cursor-pointer justify-start gap-3">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={dynamicPricingEnabled}
+                  onChange={e => setDynamicPricingEnabled(e.target.checked)}
+                />
+                <span className="label-text">Enable dynamic pricing for hyperblogs</span>
+              </label>
+              <label className="label">
+                <span className="label-text-alt">Price increases with each purchase and decays over time</span>
+              </label>
+            </div>
+
+            {dynamicPricingEnabled && (
+              <>
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-semibold">Price Step (USD)</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    placeholder="0.50"
+                    value={priceStepUsd}
+                    onChange={e => setPriceStepUsd(parseFloat(e.target.value) || 0)}
+                    min={0}
+                    max={100}
+                    step={0.01}
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">Price increase per hyperblog purchase</span>
+                  </label>
+                </div>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-semibold">Decay Rate (USD/hour)</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    placeholder="0.10"
+                    value={priceDecayRate}
+                    onChange={e => setPriceDecayRate(parseFloat(e.target.value) || 0)}
+                    min={0}
+                    max={10}
+                    step={0.01}
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">Price decrease per hour (linear decay)</span>
+                  </label>
+                </div>
+
+                <div className="alert alert-info text-xs">
+                  <span>
+                    💡 First hyperblog will be FREE. Price formula: base + (step × purchases) - (decay × hours)
+                  </span>
+                </div>
+              </>
+            )}
 
             <div className="modal-action">
               <button className="btn" onClick={handleBack}>

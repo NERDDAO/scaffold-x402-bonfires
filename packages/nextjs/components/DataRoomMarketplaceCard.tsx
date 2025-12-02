@@ -338,7 +338,13 @@ export function DataRoomMarketplaceCard({
         <div className="flex flex-wrap gap-2 mb-3 text-xs">
           <div className="flex items-center gap-1">
             <span>💰</span>
-            <span className="font-semibold">${dataroom.price_usd.toFixed(2)} USD</span>
+            <span className="font-semibold">
+              ${dataroom.current_hyperblog_price_usd || dataroom.price_usd.toFixed(2)} USD
+            </span>
+            {dataroom.dynamic_pricing_enabled && <span className="badge badge-warning badge-xs">Dynamic ▲</span>}
+            {dataroom.dynamic_pricing_enabled && dataroom.total_purchases === 0 && (
+              <span className="badge badge-success badge-xs">First blog FREE! 🎉</span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <span>📊</span>
@@ -478,7 +484,9 @@ export function DataRoomMarketplaceCard({
       <HyperBlogCreator
         dataroomId={dataroom.id}
         dataroomDescription={dataroom.description}
-        dataroomPrice={dataroom.price_usd}
+        dataroomPrice={
+          dataroom.current_hyperblog_price_usd ? parseFloat(dataroom.current_hyperblog_price_usd) : dataroom.price_usd
+        }
         isOpen={isHyperBlogModalOpen}
         onClose={handleCloseHyperBlogModal}
         onSuccess={handleHyperBlogSuccess}

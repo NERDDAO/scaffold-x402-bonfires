@@ -198,13 +198,16 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       if (dataroomPrice !== undefined) {
         priceUsd = dataroomPrice;
       } else {
-        // Fetch dataroom details to get price
+        // Fetch dataroom details to get current price
         const dataroomResponse = await fetch(`/api/datarooms/${dataroomId}`);
         if (!dataroomResponse.ok) {
           throw new Error("Failed to fetch dataroom details");
         }
         const dataroomData = await dataroomResponse.json();
-        priceUsd = dataroomData.price_usd;
+        // Use current_hyperblog_price_usd if available, otherwise price_usd
+        priceUsd = dataroomData.current_hyperblog_price_usd
+          ? parseFloat(dataroomData.current_hyperblog_price_usd)
+          : dataroomData.price_usd;
       }
 
       // Set amount as decimal string (buildAndSignPaymentHeader handles conversion)
@@ -349,7 +352,18 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
                       : dataroomDescription}
                   </div>
                   {dataroomPrice !== undefined && (
-                    <div className="mt-2 text-sm font-bold">${dataroomPrice.toFixed(2)} USD</div>
+                    <div className="mt-2 text-sm">
+                      {dataroomPrice === 0 ? (
+                        <span className="font-bold text-success">FREE (First blog!) 🎉</span>
+                      ) : (
+                        <span className="font-bold">${dataroomPrice.toFixed(2)} USD</span>
+                      )}
+                    </div>
+                  )}
+                  {dataroomPrice === 0 && (
+                    <p className="text-xs mt-1 opacity-80">
+                      This dataroom offers the first blog for free! Subsequent blogs may have a cost.
+                    </p>
                   )}
                 </div>
               </div>
