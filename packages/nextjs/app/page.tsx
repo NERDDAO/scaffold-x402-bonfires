@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { HyperBlogFeed } from "@/components/HyperBlogFeed";
 import { WhatIsHyperBlogsModal } from "@/components/WhatIsHyperBlogsModal";
@@ -26,7 +27,15 @@ const Home: NextPage = () => {
           <div className="text-center mb-16 space-y-section animate-fade-in">
             <div>
               <span className="block text-2xl mb-4 text-base-content/60 font-medium tracking-wide">Welcome to</span>
-              <h1 className="block text-5xl sm:text-6xl lg:text-7xl font-bold font-serif tracking-tight mb-6 text-base-content">
+              <h1 className="flex items-center justify-center gap-4 text-5xl sm:text-6xl lg:text-7xl font-bold font-serif tracking-tight mb-6 text-base-content">
+                <Image
+                  src="/logo.svg"
+                  alt="HyperBlogs Logo"
+                  width={80}
+                  height={40}
+                  className="h-12 sm:h-14 lg:h-16 w-auto dark:invert"
+                />
+                <span className="text-base-content/30">|</span>
                 HyperBlogs
               </h1>
               <p className="block text-xl mt-4 text-base-content/70 leading-relaxed max-w-2xl mx-auto">
