@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       dataroom_id: body.dataroom_id,
       user_query: body.user_query,
       is_public: body.is_public ?? true,
+      blog_length: body.blog_length ?? "medium",
       expected_amount: body.expected_amount,
     };
 
