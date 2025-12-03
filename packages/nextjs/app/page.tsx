@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { HyperBlogFeed } from "@/components/HyperBlogFeed";
 import { WhatIsHyperBlogsModal } from "@/components/WhatIsHyperBlogsModal";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import type { NextPage } from "next";
 import { ClockIcon, CurrencyDollarIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
@@ -35,8 +34,7 @@ const Home: NextPage = () => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
-              <ConnectButton />
+            <div className="flex justify-center items-center">
               <button
                 className="btn btn-ghost btn-sm text-base-content/60 hover:text-primary hover:bg-transparent"
                 onClick={() => setIsInfoModalOpen(true)}

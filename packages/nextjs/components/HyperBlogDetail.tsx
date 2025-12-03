@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { HyperBlogInfo } from "@/lib/types/delve-api";
 import { calculateReadingTime } from "@/lib/utils";
@@ -609,35 +610,34 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative max-w-full">
+      <div className="flex-1 flex flex-col lg:flex-row relative max-w-full">
         {/* Table of Contents Sidebar */}
         {currentBlog.blog_content?.sections && (
           <>
             {/* Desktop TOC */}
-            <div
-              ref={tocRef}
-              className="hidden lg:block lg:w-64 lg:border-r lg:border-base-300 lg:overflow-y-auto lg:h-[calc(100vh-100px)] sticky top-[80px] z-10"
-            >
-              <div className="p-4">
-                <h4 className="text-sm font-semibold uppercase tracking-wide opacity-70 mb-3">Table of Contents</h4>
-                <nav className="space-y-1">
-                  {currentBlog.blog_content.sections
-                    .sort((a, b) => a.order - b.order)
-                    .map((section, index) => (
-                      <button
-                        key={section.htn_node_id}
-                        onClick={() => handleScrollToSection(section.htn_node_id)}
-                        className={`toc-item w-full text-left text-sm py-2 px-4 rounded transition-all min-h-[44px] flex items-center gap-2 focus:ring-2 focus:ring-primary focus:outline-none ${
-                          activeSection === section.htn_node_id
-                            ? "toc-item active bg-base-200 border-l-4 border-primary font-semibold"
-                            : "border-l-4 border-transparent hover:bg-base-200"
-                        }`}
-                      >
-                        <span className="text-xs opacity-60 flex-shrink-0">{index + 1}.</span>
-                        <span className="flex-1 line-clamp-2">{section.title}</span>
-                      </button>
-                    ))}
-                </nav>
+            <div ref={tocRef} className="hidden lg:block lg:w-64 lg:flex-shrink-0">
+              <div className="fixed top-[140px] w-64 h-[calc(100vh-160px)] overflow-y-auto border-r border-base-300 bg-base-100 z-10">
+                <div className="p-4">
+                  <h4 className="text-sm font-semibold uppercase tracking-wide opacity-70 mb-3">Table of Contents</h4>
+                  <nav className="space-y-1">
+                    {currentBlog.blog_content.sections
+                      .sort((a, b) => a.order - b.order)
+                      .map((section, index) => (
+                        <button
+                          key={section.htn_node_id}
+                          onClick={() => handleScrollToSection(section.htn_node_id)}
+                          className={`toc-item w-full text-left text-sm py-2 px-4 rounded transition-all min-h-[44px] flex items-center gap-2 focus:ring-2 focus:ring-primary focus:outline-none ${
+                            activeSection === section.htn_node_id
+                              ? "toc-item active bg-base-200 border-l-4 border-primary font-semibold"
+                              : "border-l-4 border-transparent hover:bg-base-200"
+                          }`}
+                        >
+                          <span className="text-xs opacity-60 flex-shrink-0">{index + 1}.</span>
+                          <span className="flex-1 line-clamp-2">{section.title}</span>
+                        </button>
+                      ))}
+                  </nav>
+                </div>
               </div>
             </div>
 
@@ -923,6 +923,20 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
                     <strong>Author:</strong> {truncateAddress(currentBlog.author_wallet, 8)}
                   </span>
                 </div>
+              </div>
+              <div className="bg-base-50 rounded-lg p-3">
+                <Link
+                  href={`/data-rooms/${currentBlog.dataroom_id}`}
+                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors group"
+                  title="Visit this DataRoom to create your own HyperBlog"
+                >
+                  <span className="text-base">🗂️</span>
+                  <span className="truncate">
+                    <strong>DataRoom:</strong>{" "}
+                    {currentBlog.dataroom_description || truncateAddress(currentBlog.dataroom_id, 8)}
+                  </span>
+                  <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                </Link>
               </div>
               <div className="bg-base-50 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-sm">
