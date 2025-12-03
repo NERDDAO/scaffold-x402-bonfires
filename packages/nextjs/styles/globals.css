@@ -146,6 +146,28 @@
   background: var(--color-base-200);
 }
 
+/* Banner backdrop */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background-image: url('/banner.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+[data-theme="dark"] body::before {
+  opacity: 0.12;
+}
+
 .btn {
   @apply shadow-sm transition-all duration-200 ease-out;
   text-transform: none;
