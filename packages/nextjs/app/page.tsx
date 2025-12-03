@@ -46,13 +46,6 @@ const Home: NextPage = () => {
 
           {/* Latest HyperBlogs Section */}
           <div className="max-w-6xl mx-auto mb-20 w-full space-y-8">
-            <div className="flex flex-col items-center gap-2 text-center mb-10">
-              <h2 className="text-3xl sm:text-4xl font-bold font-serif text-base-content">Latest HyperBlogs</h2>
-              <p className="text-base-content/60 text-lg">
-                Explore AI-generated blogs from knowledge graphs across all DataRooms
-              </p>
-            </div>
-
             <div className="p-1 bg-transparent">
               <HyperBlogFeed showFilters={true} title="" autoRefreshInterval={60000} initialLimit={6} />
             </div>
