@@ -314,6 +314,9 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
                 onChange={e => setSystemPrompt(e.target.value)}
                 maxLength={1000}
               />
+              <label className="label">
+                <span className="label-text-alt">Customize AI behavior for chat interactions</span>
+              </label>
             </div>
 
             <div className="divider">Subscription Settings</div>

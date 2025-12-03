@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { HyperBlogInfo } from "@/lib/types/delve-api";
 import { calculateReadingTime } from "@/lib/utils";
@@ -64,6 +65,12 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
   const [newCommentText, setNewCommentText] = useState<string>("");
   const [isSubmittingComment, setIsSubmittingComment] = useState<boolean>(false);
   const [viewed, setViewed] = useState<boolean>(false);
+
+  // Banner State
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [isBannerLoading, setIsBannerLoading] = useState<boolean>(false);
+  const [bannerError, setBannerError] = useState<boolean>(false);
+  const [bannerCached, setBannerCached] = useState<boolean>(false);
 
   // Navigation State
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
@@ -164,6 +171,54 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
   useEffect(() => {
     fetchFullContent();
   }, [fetchFullContent]);
+
+  /**
+   * Generate Banner Image
+   */
+  const generateBanner = useCallback(async () => {
+    if (bannerUrl || isBannerLoading) return;
+
+    setIsBannerLoading(true);
+    setBannerError(false);
+
+    try {
+      const response = await fetch(`/api/hyperblogs/${blog.id}/banner`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate banner");
+      }
+
+      const data = await response.json();
+      setBannerUrl(data.banner_url);
+      setBannerCached(data.cached || false);
+    } catch (err) {
+      console.error("Error generating banner:", err);
+      setBannerError(true);
+    } finally {
+      setIsBannerLoading(false);
+    }
+  }, [blog.id, bannerUrl, isBannerLoading]);
+
+  /**
+   * Trigger banner generation when content is loaded
+   */
+  useEffect(() => {
+    if (fullBlogContent && fullBlogContent.image_prompt && !fullBlogContent.banner_url && !bannerUrl) {
+      generateBanner();
+    }
+  }, [fullBlogContent, generateBanner, bannerUrl]);
+
+  /**
+   * Initialize banner state from blog data
+   */
+  useEffect(() => {
+    if (fullBlogContent?.banner_url) {
+      setBannerUrl(fullBlogContent.banner_url);
+      setBannerCached(true);
+    }
+  }, [fullBlogContent]);
 
   /**
    * Handle View Increment
@@ -509,6 +564,50 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
         )}
       </div>
 
+      {/* Banner Image Section */}
+      {!isLoadingFullContent && (fullBlogContent?.image_prompt || bannerUrl) && (
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          {/* Banner Loading State */}
+          {isBannerLoading && (
+            <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-base-200 animate-pulse">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                <span className="loading loading-spinner loading-lg text-primary"></span>
+                <span className="text-sm opacity-70">Generating banner...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Banner Image Display */}
+          {bannerUrl && !bannerError && !isBannerLoading && (
+            <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden shadow-lg">
+              <Image
+                src={bannerUrl}
+                alt={`Banner for ${currentBlog.user_query}`}
+                fill
+                className="object-cover"
+                onError={() => setBannerError(true)}
+                unoptimized
+              />
+              {bannerCached && (
+                <div className="absolute top-2 right-2 badge badge-sm badge-ghost bg-base-100/80 gap-1">
+                  <Check className="w-3 h-3" />
+                  Cached
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Banner Error/Fallback State */}
+          {(bannerError || (!bannerUrl && !isBannerLoading && fullBlogContent?.image_prompt)) && !isBannerLoading && (
+            <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-medium opacity-60 text-center px-4">{currentBlog.user_query}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative max-w-full">
         {/* Table of Contents Sidebar */}
@@ -517,7 +616,7 @@ export const HyperBlogDetail = ({ blog, onBack, showBackButton = true, initialSe
             {/* Desktop TOC */}
             <div
               ref={tocRef}
-              className="hidden lg:block lg:w-64 lg:border-r lg:border-base-300 lg:overflow-y-auto lg:h-[calc(100vh-100px)] sticky top-[80px]"
+              className="hidden lg:block lg:w-64 lg:border-r lg:border-base-300 lg:overflow-y-auto lg:h-[calc(100vh-100px)] sticky top-[80px] z-10"
             >
               <div className="p-4">
                 <h4 className="text-sm font-semibold uppercase tracking-wide opacity-70 mb-3">Table of Contents</h4>

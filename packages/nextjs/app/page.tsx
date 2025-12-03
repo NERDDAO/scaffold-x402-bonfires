@@ -66,15 +66,15 @@ const Home: NextPage = () => {
             </div>
           </div>
 
-          {/* How It Works */}
-          <div className="bg-base-200/50 p-8 sm:p-12 rounded-2xl mb-20 w-full border border-base-content/5">
-            <h2 className="text-3xl font-bold mb-8 font-serif text-center">How It Works</h2>
-            <div className="steps steps-vertical lg:steps-horizontal w-full">
-              <div className="step step-primary text-sm font-medium">Browse Data Rooms</div>
-              <div className="step step-primary text-sm font-medium">Connect & Pay</div>
-              <div className="step step-primary text-sm font-medium">AI Generates</div>
-              <div className="step step-primary text-sm font-medium">Read & Share</div>
-            </div>
+          {/* Learn How It Works CTA */}
+          <div className="bg-base-200/50 p-8 sm:p-10 rounded-2xl mb-20 w-full border border-base-content/5 text-center">
+            <h2 className="text-2xl font-bold mb-3 font-serif">New to HyperBlogs?</h2>
+            <p className="text-base-content/70 mb-6">
+              Learn how knowledge graphs transform into AI-generated blog posts with blockchain payments.
+            </p>
+            <Link href="/how-it-works" className="btn btn-outline btn-primary transition-all duration-300">
+              Learn How It Works →
+            </Link>
           </div>
         </div>
 

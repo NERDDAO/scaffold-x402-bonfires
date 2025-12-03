@@ -275,6 +275,20 @@ export const HyperBlogFeed = ({
   }, [blogs]);
 
   /**
+   * Build a mapping from dataroom_id to description for filter dropdown display
+   */
+  const dataroomDescriptions = useMemo(() => {
+    const descriptions = new Map<string, string>();
+    for (const blog of blogs) {
+      if (!descriptions.has(blog.dataroom_id)) {
+        // Use description if available, otherwise fallback to truncated ID
+        descriptions.set(blog.dataroom_id, blog.dataroom_description || blog.dataroom_id.substring(0, 8) + "...");
+      }
+    }
+    return descriptions;
+  }, [blogs]);
+
+  /**
    * Handler: Clear all filters
    */
   const handleClearFilters = useCallback(() => {
@@ -307,6 +321,15 @@ export const HyperBlogFeed = ({
     if (!address) return "Unknown";
     if (address.length <= chars * 2) return address;
     return `${address.slice(0, chars)}...${address.slice(-chars)}`;
+  };
+
+  /**
+   * Utility: Truncate dataroom description for filter dropdown
+   */
+  const truncateDescription = (description: string | null | undefined, maxLength: number = 50): string => {
+    if (!description || description.trim() === "") return "Unknown DataRoom";
+    if (description.length <= maxLength) return description;
+    return description.slice(0, maxLength) + "...";
   };
 
   /**
@@ -421,7 +444,7 @@ export const HyperBlogFeed = ({
                 <option value="">All DataRooms</option>
                 {uniqueDataroomIds.map(id => (
                   <option key={id} value={id}>
-                    {id.substring(0, 8)}...
+                    {truncateDescription(dataroomDescriptions.get(id), 50)}
                   </option>
                 ))}
               </select>

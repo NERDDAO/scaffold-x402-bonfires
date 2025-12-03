@@ -416,6 +416,7 @@ export interface HyperBlogInfo {
   preview: string;
   summary?: string | null; // AI-generated 50-word summary (preferred over preview for feed display)
   image_prompt?: string | null; // AI-generated prompt for creating blog banner image
+  banner_url?: string | null; // Generated banner image URL or base64 data (cached after generation)
   blog_content?: BlogContent;
   upvotes?: number;
   downvotes?: number;
@@ -424,6 +425,8 @@ export interface HyperBlogInfo {
   htn_progress?: HyperBlogHTNProgress;
   // Taxonomy keywords from bonfire that match the blog content
   taxonomy_keywords?: string[] | null;
+  // Description of the DataRoom this hyperblog belongs to (for filter display)
+  dataroom_description?: string | null;
 }
 
 /**
