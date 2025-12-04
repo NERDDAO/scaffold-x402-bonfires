@@ -32,24 +32,33 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 
-    // Validate required fields
-    if (!body.query || typeof body.query !== "string" || body.query.trim() === "") {
-      return NextResponse.json({ error: "Missing or empty required field: query" }, { status: 400 });
+    // Validate: either query or center_node_uuid must be provided
+    const hasQuery = body.query && typeof body.query === "string" && body.query.trim() !== "";
+    const hasCenterNode = body.center_node_uuid && typeof body.center_node_uuid === "string";
+
+    if (!hasQuery && !hasCenterNode) {
+      return NextResponse.json({ error: "Either 'query' or 'center_node_uuid' must be provided" }, { status: 400 });
     }
 
     // Construct delve request using bonfire_id directly
-    const delveRequest = {
+    const delveRequest: Record<string, unknown> = {
       bonfire_id: bonfire_id,
-      query: body.query,
+      query: body.query || "",
       num_results: body.num_results || 10,
     };
+
+    // Add center_node_uuid if provided (for focused/neighborhood queries)
+    if (hasCenterNode) {
+      delveRequest.center_node_uuid = body.center_node_uuid;
+    }
 
     // Forward to delve backend
     const delveUrl = `${config.delve.apiUrl}/delve`;
 
     console.log(`Forwarding preview request to: ${delveUrl}`, {
       bonfire_id: bonfire_id,
-      query: body.query,
+      query: body.query || "(empty)",
+      center_node_uuid: body.center_node_uuid || "(none)",
       num_results: delveRequest.num_results,
     });
 
