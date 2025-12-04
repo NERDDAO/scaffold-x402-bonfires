@@ -438,6 +438,7 @@ export interface PurchaseHyperBlogRequest {
   user_query: string;
   is_public?: boolean;
   blog_length?: "short" | "medium" | "long";
+  generation_mode?: "blog" | "card";
   expected_amount?: string;
 }
 

@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       user_query: body.user_query,
       is_public: body.is_public ?? true,
       blog_length: body.blog_length ?? "medium",
+      generation_mode: body.generation_mode ?? "blog",
       expected_amount: body.expected_amount,
     };
 
