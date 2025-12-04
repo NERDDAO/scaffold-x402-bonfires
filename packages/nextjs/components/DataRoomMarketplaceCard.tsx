@@ -182,9 +182,9 @@ export function DataRoomMarketplaceCard({
     }
   };
 
-  // Fetch center node info from the graph
+  // Fetch center node info by UUID (direct lookup, no delve query)
   const fetchCenterNodeInfo = async () => {
-    if (!dataroom.center_node_uuid || !dataroom.bonfire_id) return;
+    if (!dataroom.center_node_uuid) return;
 
     // Abort any existing request
     if (centerNodeAbortRef.current) {
@@ -195,14 +195,15 @@ export function DataRoomMarketplaceCard({
     setCenterNodeLoading(true);
 
     try {
-      const response = await fetch(`/api/bonfires/${dataroom.bonfire_id}/preview`, {
-        method: "POST",
+      // Direct entity lookup by UUID - much cheaper than delve
+      const url = new URL(`/api/knowledge_graph/entity/${dataroom.center_node_uuid}`, window.location.origin);
+      if (dataroom.bonfire_id) {
+        url.searchParams.append("bonfire_id", dataroom.bonfire_id);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: "",
-          num_results: 10,
-          center_node_uuid: dataroom.center_node_uuid,
-        }),
         signal: centerNodeAbortRef.current.signal,
       });
 
@@ -210,24 +211,19 @@ export function DataRoomMarketplaceCard({
         throw new Error(`Failed to fetch center node: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const entity = await response.json();
 
-      // Find the center node in the returned entities by matching UUID
-      const centerNode = (data.entities || []).find(
-        (entity: any) => entity.uuid === dataroom.center_node_uuid || entity.id === dataroom.center_node_uuid,
-      );
-
-      if (centerNode) {
+      if (entity) {
         setCenterNodeInfo({
-          uuid: centerNode.uuid || centerNode.id,
-          name: centerNode.name || "Unknown Node",
-          entity_type: centerNode.entity_type || centerNode.type,
-          summary: centerNode.summary || centerNode.description,
-          labels: centerNode.labels,
+          uuid: entity.uuid || entity.id || dataroom.center_node_uuid,
+          name: entity.name || "Unknown Node",
+          entity_type: entity.entity_type || entity.type || "unknown",
+          summary: entity.summary || entity.description || "",
+          labels: entity.labels || [],
         });
       }
-    } catch (err: any) {
-      if (err.name === "AbortError") return;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error("Failed to fetch center node info:", err);
     } finally {
       setCenterNodeLoading(false);
@@ -251,13 +247,13 @@ export function DataRoomMarketplaceCard({
     }
   };
 
-  // Fetch center node info on mount if center_node_uuid exists
+  // Fetch center node info only when preview is expanded (not on mount)
   useEffect(() => {
-    if (dataroom.center_node_uuid && !centerNodeInfo) {
+    if (isPreviewExpanded && dataroom.center_node_uuid && !centerNodeInfo && !centerNodeLoading) {
       fetchCenterNodeInfo();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataroom.center_node_uuid]);
+  }, [isPreviewExpanded, dataroom.center_node_uuid]);
 
   // Cleanup on unmount
   useEffect(() => {

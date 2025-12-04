@@ -40,9 +40,9 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
     return bonfire ? bonfire.name : truncateAddress(microsub.bonfire_id, 6);
   }, [microsub.bonfire_id, bonfires]);
 
-  // Fetch center node info from the graph
+  // Fetch center node info by UUID (direct lookup, no delve query)
   const fetchCenterNodeInfo = useCallback(async () => {
-    if (!microsub.center_node_uuid || !microsub.bonfire_id) return;
+    if (!microsub.center_node_uuid) return;
 
     // Abort any existing request
     if (centerNodeAbortRef.current) {
@@ -53,14 +53,15 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
     setCenterNodeLoading(true);
 
     try {
-      const response = await fetch(`/api/bonfires/${microsub.bonfire_id}/preview`, {
-        method: "POST",
+      // Direct entity lookup by UUID - much cheaper than delve
+      const url = new URL(`/api/knowledge_graph/entity/${microsub.center_node_uuid}`, window.location.origin);
+      if (microsub.bonfire_id) {
+        url.searchParams.append("bonfire_id", microsub.bonfire_id);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: "",
-          num_results: 10,
-          center_node_uuid: microsub.center_node_uuid,
-        }),
         signal: centerNodeAbortRef.current.signal,
       });
 
@@ -68,20 +69,15 @@ export const DataRoomCard: React.FC<DataRoomCardProps> = ({ microsub, bonfires, 
         throw new Error(`Failed to fetch center node: ${response.statusText}`);
       }
 
-      const data: DelveResponse = await response.json();
+      const entity = await response.json();
 
-      // Find the center node in the returned entities by matching UUID
-      const centerNode = (data.entities || []).find(
-        entity => entity.uuid === microsub.center_node_uuid || entity.id === microsub.center_node_uuid,
-      );
-
-      if (centerNode) {
+      if (entity) {
         setCenterNodeInfo({
-          uuid: centerNode.uuid || centerNode.id,
-          name: centerNode.name || "Unknown Node",
-          entity_type: centerNode.entity_type || centerNode.type,
-          summary: centerNode.summary || centerNode.description,
-          labels: centerNode.labels,
+          uuid: entity.uuid || entity.id || microsub.center_node_uuid,
+          name: entity.name || "Unknown Node",
+          entity_type: entity.entity_type || entity.type || "unknown",
+          summary: entity.summary || entity.description || "",
+          labels: entity.labels || [],
         });
       }
     } catch (err) {
