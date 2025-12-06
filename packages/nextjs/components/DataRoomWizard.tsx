@@ -35,6 +35,8 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
   const [dynamicPricingEnabled, setDynamicPricingEnabled] = useState<boolean>(false);
   const [priceStepUsd, setPriceStepUsd] = useState<number>(0.0);
   const [priceDecayRate, setPriceDecayRate] = useState<number>(0.0);
+  // Image generation model state
+  const [imageModel, setImageModel] = useState<"schnell" | "dev" | "pro" | "realism">("schnell");
 
   // Use agent selection hook to fetch bonfires
   const agentSelection = useAgentSelection();
@@ -56,6 +58,8 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
       setDynamicPricingEnabled(false);
       setPriceStepUsd(0.0);
       setPriceDecayRate(0.0);
+      // Reset image model state
+      setImageModel("schnell");
     }
   }, [isOpen]);
 
@@ -163,6 +167,8 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
       dynamicPricingEnabled,
       priceStepUsd,
       priceDecayRate,
+      // Add image model
+      imageModel,
     };
 
     onComplete(config);
@@ -178,6 +184,7 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
     dynamicPricingEnabled,
     priceStepUsd,
     priceDecayRate,
+    imageModel,
     onComplete,
     onClose,
   ]);
@@ -442,6 +449,29 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
                 </div>
               </>
             )}
+
+            <div className="divider">Image Generation</div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-semibold">Banner Image Model</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={imageModel}
+                onChange={e => setImageModel(e.target.value as "schnell" | "dev" | "pro" | "realism")}
+              >
+                <option value="schnell">Schnell - Fast & Good Quality ($0.006/image)</option>
+                <option value="dev">Dev - Balanced Speed/Quality ($0.052/image)</option>
+                <option value="pro">Pro - High Quality ($0.083/image)</option>
+                <option value="realism">Realism - Photorealistic ($0.083/image)</option>
+              </select>
+              <label className="label">
+                <span className="label-text-alt">
+                  Choose image quality for hyperblog banners. Higher quality = higher cost.
+                </span>
+              </label>
+            </div>
 
             <div className="modal-action">
               <button className="btn" onClick={handleBack}>
