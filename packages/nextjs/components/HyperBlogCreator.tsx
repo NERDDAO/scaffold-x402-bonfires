@@ -223,12 +223,14 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       }
 
       // Build request body
+      // Note: generation_mode defaults to "blog" on backend for multi-section articles
       const requestBody: PurchaseHyperBlogRequest = {
         payment_header: paymentHeader,
         dataroom_id: dataroomId,
         user_query: userQuery.trim(),
         is_public: isPublic,
         blog_length: blogLength,
+        generation_mode: "blog", // Explicit: use blog HTN for multi-section articles
       };
 
       // Call purchase API
