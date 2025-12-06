@@ -172,7 +172,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       // Set up interval
       pollingIntervalRef.current = setInterval(pollStatus, 5000);
     },
-    [stopPolling, onSuccess],
+    [stopPolling, onSuccess, userQuery],
   );
 
   // Submit handler

@@ -68,6 +68,7 @@ export function PaidChatInterface({
     ) {
       microsubSelection.selectMicrosub(selectedMicrosubTxHash);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedMicrosubTxHash,
     microsubSelection.availableMicrosubs,

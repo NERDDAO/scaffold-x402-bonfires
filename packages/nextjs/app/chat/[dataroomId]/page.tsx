@@ -112,6 +112,7 @@ export default function DataRoomSubscriptionPage() {
         agentSelection.selectAgent(agentSelection.availableAgents[0].id);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dataRoom,
     agentSelection.isInitialized,
@@ -293,7 +294,7 @@ export default function DataRoomSubscriptionPage() {
     } finally {
       setIsSubscribing(false);
     }
-  }, [isConnected, address, dataRoom, buildAndSignPaymentHeader, params.dataroomId, fetchMicrosubs]);
+  }, [isConnected, address, dataRoom, buildAndSignPaymentHeader, params.dataroomId, fetchMicrosubs, router]);
 
   // Loading state
   if (loading) {
