@@ -268,6 +268,8 @@ export interface DataRoomConfig {
   dynamicPricingEnabled?: boolean;
   priceStepUsd?: number;
   priceDecayRate?: number;
+  // Image generation model (optional)
+  imageModel?: "schnell" | "dev" | "pro" | "realism";
 }
 
 /**
@@ -299,6 +301,8 @@ export interface DataRoomInfo {
   price_decay_rate?: number; // Linear decay rate per hour
   total_purchases?: number; // Count of hyperblog purchases
   last_purchase_at?: string; // ISO timestamp of last purchase
+  // Image generation model
+  image_model?: "schnell" | "dev" | "pro" | "realism";
 }
 
 /**
@@ -327,6 +331,8 @@ export interface CreateDataRoomRequest {
   dynamic_pricing_enabled?: boolean; // Optional, defaults to false
   price_step_usd?: number; // Optional, defaults to 0.0
   price_decay_rate?: number; // Optional, defaults to 0.0
+  // Image generation model (optional)
+  image_model?: "schnell" | "dev" | "pro" | "realism";
 }
 
 /**

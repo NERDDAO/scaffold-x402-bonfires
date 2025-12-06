@@ -81,6 +81,10 @@ export default function DataRoomsPage() {
           price_step_usd: config.priceStepUsd || 0.0,
           price_decay_rate: config.priceDecayRate || 0.0,
         }),
+        // Add image model (optional, defaults to schnell on backend)
+        ...(config.imageModel && {
+          image_model: config.imageModel,
+        }),
       };
 
       const response = await fetch("/api/datarooms", {
