@@ -39,6 +39,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
   // Loading/Error state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPriceLoading, setIsPriceLoading] = useState(false);
 
   // Result state
   const [hyperblogId, setHyperblogId] = useState<string | null>(null);
@@ -65,6 +66,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       setIsPublic(true);
       setBlogLength("medium");
       setIsLoading(false);
+      setIsPriceLoading(false);
       setError(null);
       setHyperblogId(null);
       setGenerationStatus("idle");
@@ -94,6 +96,13 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       textareaRef.current.focus();
     }
   }, [isOpen, isConnected]);
+
+  // Effect: Clear price loading state when dataroomPrice prop changes
+  useEffect(() => {
+    if (dataroomPrice !== undefined) {
+      setIsPriceLoading(false);
+    }
+  }, [dataroomPrice]);
 
   // Validation helper
   const isQueryValid = userQuery.trim().length >= 3 && userQuery.length <= 500;
@@ -195,20 +204,25 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
       // Calculate payment amount
       let priceUsd: number;
 
-      if (dataroomPrice !== undefined && dataroomPrice > 0) {
-        priceUsd = dataroomPrice;
-      } else {
-        // Fetch dataroom details to get current price
-        const dataroomResponse = await fetch(`/api/datarooms/${dataroomId}`);
-        if (!dataroomResponse.ok) {
-          throw new Error("Failed to fetch dataroom details");
+      setIsPriceLoading(true);
+      try {
+        if (dataroomPrice !== undefined && dataroomPrice > 0) {
+          priceUsd = dataroomPrice;
+        } else {
+          // Fetch dataroom details to get current price
+          const dataroomResponse = await fetch(`/api/datarooms/${dataroomId}`);
+          if (!dataroomResponse.ok) {
+            throw new Error("Failed to fetch dataroom details");
+          }
+          const dataroomData = await dataroomResponse.json();
+          // Use current_hyperblog_price_usd if > 0, otherwise fall back to price_usd
+          const dynamicPrice = dataroomData.current_hyperblog_price_usd
+            ? parseFloat(dataroomData.current_hyperblog_price_usd)
+            : 0;
+          priceUsd = dynamicPrice > 0 ? dynamicPrice : dataroomData.price_usd;
         }
-        const dataroomData = await dataroomResponse.json();
-        // Use current_hyperblog_price_usd if > 0, otherwise fall back to price_usd
-        const dynamicPrice = dataroomData.current_hyperblog_price_usd
-          ? parseFloat(dataroomData.current_hyperblog_price_usd)
-          : 0;
-        priceUsd = dynamicPrice > 0 ? dynamicPrice : dataroomData.price_usd;
+      } finally {
+        setIsPriceLoading(false);
       }
 
       // Set amount as decimal string (buildAndSignPaymentHeader handles conversion)
@@ -354,9 +368,14 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
                       ? dataroomDescription.substring(0, 100) + "..."
                       : dataroomDescription}
                   </div>
-                  {dataroomPrice !== undefined && (
+                  {isPriceLoading ? (
+                    <div className="mt-2 text-sm font-bold flex items-center gap-2">
+                      <span className="loading loading-spinner loading-xs"></span>
+                      Calculating price...
+                    </div>
+                  ) : dataroomPrice !== undefined ? (
                     <div className="mt-2 text-sm font-bold">${dataroomPrice.toFixed(2)} USD</div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
