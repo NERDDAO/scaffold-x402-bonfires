@@ -242,6 +242,7 @@ export const HyperBlogCreator: React.FC<HyperBlogCreatorProps> = ({
         is_public: isPublic,
         blog_length: blogLength,
         generation_mode: "blog", // Explicit: use blog HTN for multi-section articles
+        expected_amount: amount, // Pass signed amount to ensure backend uses same price
       };
 
       // Call purchase API

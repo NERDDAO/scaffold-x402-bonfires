@@ -371,11 +371,16 @@ export interface BlogContent {
     htn_graph_hash: string;
     user_query: string;
     dataroom_description: string;
+    blog_length: "short" | "medium" | "long";
+    generation_mode?: "blog" | "card";
     sections_generated: number;
     sections_failed?: number;
     failed_node_ids?: string[];
     generated_at: string;
+    summary?: string;
   };
+  summary?: string;
+  image_prompt?: string;
 }
 
 /**
@@ -419,6 +424,7 @@ export interface HyperBlogInfo {
   tx_hash: string | null;
   word_count: number | null;
   blog_length: "short" | "medium" | "long";
+  generation_mode?: "blog" | "card"; // Generation mode from metadata
   preview: string;
   summary?: string | null; // AI-generated 50-word summary (preferred over preview for feed display)
   image_prompt?: string | null; // AI-generated prompt for creating blog banner image

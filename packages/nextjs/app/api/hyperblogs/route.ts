@@ -13,6 +13,7 @@ import { createErrorFromResponse } from "@/lib/types/errors";
  * - offset: number (>=0, default: 0) - Pagination offset
  * - dataroom_id: string (optional) - Filter by specific dataroom
  * - status: string (optional) - Filter by status: generating, completed, failed
+ * - generation_mode: string (optional) - Filter by generation mode: blog, card
  *
  * Returns:
  * - 200: AggregatedHyperBlogListResponse with public HyperBlogs
@@ -64,6 +65,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Parse and validate optional generation_mode filter
+    const generationMode = searchParams.get("generation_mode");
+    const validModes = ["blog", "card"];
+    if (generationMode !== null && !validModes.includes(generationMode)) {
+      return NextResponse.json(
+        { error: `Invalid generation_mode parameter. Must be one of: ${validModes.join(", ")}.` },
+        { status: 400 },
+      );
+    }
+
     // 2. Backend URL Construction
     const backendUrl = new URL(`${config.delve.apiUrl}/datarooms/hyperblogs`);
     backendUrl.searchParams.append("limit", limit.toString());
@@ -76,6 +87,10 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       backendUrl.searchParams.append("status", status);
+    }
+
+    if (generationMode) {
+      backendUrl.searchParams.append("generation_mode", generationMode);
     }
 
     console.log(`[GET /api/hyperblogs] Fetching from backend: ${backendUrl.toString()}`);

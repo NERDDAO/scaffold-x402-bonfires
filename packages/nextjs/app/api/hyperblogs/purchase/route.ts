@@ -1,6 +1,6 @@
 /**
  * Payment-gated HyperBlog purchase API route
- * Forwards requests to delve's /hyperblogs/purchase endpoint
+ * Forwards requests to delve's /datarooms/hyperblogs/purchase endpoint
  *
  * Delve backend handles payment verification, settlement, and blog generation.
  * This route acts as a simple proxy.
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Forward to delve backend
-    const delveUrl = `${config.delve.apiUrl}/hyperblogs/purchase`;
+    const delveUrl = `${config.delve.apiUrl}/datarooms/hyperblogs/purchase`;
 
     console.log(`Forwarding HyperBlog purchase request to: ${delveUrl}`);
 

@@ -36,7 +36,7 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
   const [priceStepUsd, setPriceStepUsd] = useState<number>(0.0);
   const [priceDecayRate, setPriceDecayRate] = useState<number>(0.0);
   // Image generation model state
-  const [imageModel, setImageModel] = useState<"schnell" | "dev" | "pro" | "realism">("schnell");
+  const [imageModel, setImageModel] = useState<"schnell" | "dev" | "pro" | "realism">("dev");
 
   // Use agent selection hook to fetch bonfires
   const agentSelection = useAgentSelection();
@@ -59,7 +59,7 @@ export function DataRoomWizard({ isOpen, onClose, onComplete }: DataRoomWizardPr
       setPriceStepUsd(0.0);
       setPriceDecayRate(0.0);
       // Reset image model state
-      setImageModel("schnell");
+      setImageModel("dev");
     }
   }, [isOpen]);
 
